@@ -31,7 +31,14 @@ TaskMaster is an intelligent platform for building good habits and breaking bad 
 | Phase 4 | AI integration (Anthropic Claude + Google Gemini) | Completed |
 | Phase 4.1 | **Pre-backend elevation — Iter 1 (AI foundation)** | **Completed** |
 | Phase 4.2 | Pre-backend elevation — Iter 2–7 | In progress |
-| Phase 5 | NestJS backend + Rewards shop | Pending |
+| Phase 5a | Routine domain models + localStorage repositories | **Completed** |
+| Phase 5b | Routine services + habit-to-routine adapter | **Completed** |
+| Phase 5c | Feature `routines/` UI (index, today, detail, form) | **Completed** |
+| Phase 5d | Behavior tracking + scheduled reminders pipeline | **Completed** |
+| Phase 5e | Adaptive engine + AI tools for routines | In progress |
+| Phase 5f | NestJS backend scaffolding | Pending |
+| Phase 5g | HTTP repositories + Capacitor push real | Pending |
+| Phase 5h | Rebrand: TaskMaster → ControlMaster | Pending |
 | Phase 6 | Performance, PWA and polish | Pending |
 
 ## Highlights — Iter 1 elevation
@@ -46,7 +53,19 @@ The AI layer graduated from text-only responses to a real execution layer. Highl
 - **Dispatcher** (`AIActionDispatcherService`) validates tool args, calls the Observable-returning `HabitService` variants (`createHabitReturning`, `updateHabitReturning`, `archiveHabitReturning`) and correlates results by `toolCallId`.
 - **`AICoachRepository` interface + injection token** ready for multi-session persistence (implementation landing in Iter 4).
 - **Debt removed**: dashboard `perfectWeeks/perfectMonths` hardcode replaced by engine signals; `gamification.service` no longer writes `localStorage` directly (goes through repo via new `saveChallenges`); root `app.component.html` boilerplate deleted.
-- **Unit tests**: Jasmine/Karma specs for `xp.utils`, `streak.utils` and `HabitInsightEngineService`.
+- Unit tests: Jasmine/Karma specs for `xp.utils`, `streak.utils` and `HabitInsightEngineService`.
+
+## Highlights — Phase 5 elevation (Routine Tracker evolution)
+
+The domain model evolved from flat `Habit` + `HabitCompletion` to a structured `Routine → Task → RoutineInstance → TaskCompletion` pipeline, absorbing the best ideas from the "Control" reference plan while keeping Angular 19 + Capacitor.
+
+- **Routine domain model** (`src/app/models/routine.model.ts`): discriminated union `ScheduleConfig` (daily/weekly/monthly/custom cron), `RoutineInstance` with status lifecycle (Pending → InProgress → Completed | Skipped | Missed), per-task completion tracking with `completion_score`.
+- **Behavior tracking pipeline** (`BehaviorTrackerService`): debounced queue (1.5s), batch flush to repository, `visibilitychange` → `navigator.sendBeacon` ready for HTTP swap. `BehaviorEventType` enum covers 11 event types (routine_opened, task_checked, streak_continued, time_window_adjusted, etc.).
+- **Scheduled reminders** (`ScheduledReminderService`): materializes `ScheduledReminder[]` from `ReminderPreference` per routine, integrates Capacitor `LocalNotifications` as local channel. Reminder channels: push, in_app, local.
+- **6 new repositories** behind InjectionTokens: `RoutineRepository`, `RoutineInstanceRepository`, `TaskCompletionRepository`, `BehaviorRepository`, `ReminderRepository`, `RoutineStreakRepository` — all with localStorage implementations and full specs. Swap to HTTP implementations in Phase 5g.
+- **RoutineAdapterService**: `Habit` legacy coexists as virtual `Routine` (1 implicit task, no instances). Dashboard, achievements and AI tools continue working during transition.
+- **Feature `routines/`** with lazy-loaded routes: index (grid cards), today (aggregated checklist), detail (instance + task rows), create/edit (multi-step form with Basics / Schedule / Tasks tabs).
+- **UI components**: `RoutineCard`, `TaskRow`, `StreakBadge`, `CompletionRing` (SVG progress), `BottomNav` mobile-first, `EmptyState` reusable.
 
 ## Features
 
@@ -59,6 +78,17 @@ The AI layer graduated from text-only responses to a real execution layer. Highl
 - Streaks with smart calculation per frequency (non-scheduled days don't break the chain)
 - GitHub-style heatmap calendar
 - Completion rate and statistics
+
+### Routine Tracker (Phase 5 — in progress)
+- Create, edit and delete **multi-task routines** (not just single habits)
+- **Tasks per routine** with order, duration estimates, and adaptive suggested times
+- **Routine instances** per day: status lifecycle (Pending → InProgress → Completed | Skipped | Missed)
+- Per-task completion tracking with **completion score** (0-100)
+- **Streaks per routine**: current, longest, celebration pending
+- Schedule types: daily, weekly (pick days), monthly (day of month), custom cron
+- **Behavior tracking pipeline**: 11 event types (routine_opened, task_checked, streak_broken, time_window_adjusted...) with debounced batch flush
+- **Scheduled reminders** materialized per routine from preferences, with Capacitor LocalNotifications integration
+- **Habit legacy coexistence**: old habits work as virtual 1-task routines via adapter during transition
 
 ### Gamification
 - **XP system**: gain experience on every habit completion
@@ -107,8 +137,9 @@ The AI layer graduated from text-only responses to a real execution layer. Highl
 | Angular Signals | Reactive state |
 | RxJS | Repository layer (Observable-based) |
 | Jasmine + Karma | Unit testing |
-| localStorage | Temporary persistence (until Phase 5) |
+| localStorage | Temporary persistence (until Phase 5g swap) |
 | Capacitor | Native Android/iOS apps |
+| `@capacitor/local-notifications` | Scheduled reminder materialization (Phase 5d) |
 
 ## Architecture
 
@@ -118,9 +149,13 @@ src/app/
     interfaces/          # Repository contracts (InjectionToken)
     repositories/        # localStorage implementations
     services/            # Business logic (signals-based)
-      habit-insight-engine.service.ts   # NEW — deterministic pattern engine
-      ai-action-dispatcher.service.ts   # NEW — tool-call executor
-      ai.service.ts                     # refactored — tool loop + snapshot
+      habit-insight-engine.service.ts   # deterministic pattern engine
+      ai-action-dispatcher.service.ts   # tool-call executor
+      ai.service.ts                     # tool loop + snapshot
+      routine.service.ts                # Phase 5b — routine CRUD + signals
+      routine-instance.service.ts       # Phase 5b — instances + task completion
+      behavior-tracker.service.ts     # Phase 5d — debounced batch events
+      scheduled-reminder.service.ts   # Phase 5d — reminder materialization
     utils/               # Helpers (dates, streaks, XP)
     providers/
       ai/
@@ -136,11 +171,17 @@ src/app/
     pipes/
   features/
     dashboard/
-    habits/
+    habits/                  # Legacy — coexists during transition
+    routines/                # Phase 5c — index, today, detail, form, analytics
     achievements/
     rewards/
     profile/
 ```
+
+### Domain models (Phase 5a)
+- `src/app/models/routine.model.ts` — `Routine`, `Task`, `RoutineInstance`, `TaskCompletion`, `RoutineStreak`, `ScheduleConfig` discriminated union
+- `src/app/models/behavior.model.ts` — `BehaviorEventType` enum, `UserBehaviorEvent`
+- `src/app/models/reminder.model.ts` — `ReminderPreference`, `ScheduledReminder`, `ReminderChannel`, `ReminderStatus`
 
 ### Key patterns
 - **Repository pattern**: data layer decoupled behind injection tokens, localStorage today — backend swap tomorrow
@@ -210,12 +251,50 @@ npx cap doctor
 - **Iter 6**: Profile + journeys + onboarding (dark mode, onboarding flow, 21/30/66-day journeys)
 - **Iter 7**: Mobile polish (local notifications, haptics, custom modals over native confirms)
 
-### Phase 5 — NestJS backend + Rewards shop
-- REST API with NestJS and PostgreSQL
-- JWT auth with Passport.js (local + Google OAuth)
-- Real rewards redeemable with points
-- Cloud sync with localStorage migration
-- Redemption history with status tracking
+### Phase 5a — Routine domain models + localStorage repositories (Completed)
+- `Routine`, `Task`, `RoutineInstance`, `TaskCompletion`, `RoutineStreak`, `ScheduleConfig` discriminated union
+- `BehaviorEventType`, `UserBehaviorEvent` model
+- `ReminderPreference`, `ScheduledReminder`, `ReminderChannel`, `ReminderStatus` model
+- 6 new repository interfaces + localStorage implementations with InjectionTokens
+
+### Phase 5b — Routine services + Habit→Routine adapter (Completed)
+- `RoutineService` with signals: activeRoutines, todayRoutines, filteredRoutines
+- `RoutineInstanceService` with getOrCreateForDate, toggleTaskCompletion, completionScore recalculation
+- `RoutineAdapterService`: legacy `Habit` coexists as virtual 1-task `Routine`
+- `MigrationService` v1→v2: initialize new localStorage keys
+
+### Phase 5c — Feature `routines/` UI (Completed)
+- `routines.routes.ts`: index, today, new, :id/edit, :id
+- Pages: `RoutinesIndexPageComponent`, `RoutinesTodayPageComponent`, `RoutineDetailPageComponent`, `RoutineFormPageComponent`
+- Components: `RoutineCard`, `TaskRow`, `StreakBadge`, `CompletionRing` (SVG), `BottomNav`
+- Multi-step form: Basics / Schedule / Tasks tabs
+
+### Phase 5d — Behavior tracking + scheduled reminders (Completed)
+- `BehaviorTrackerService`: debounced queue (1.5s), batch flush to `BehaviorRepository`, `visibilitychange` handler
+- `ScheduledReminderService`: materialize reminders from preferences, Capacitor `LocalNotifications` integration
+- 11 event types tracked: routine_opened, task_checked, task_unchecked, routine_completed, streak_continued, streak_broken, reminder_dismissed, reminder_acted, time_window_adjusted, suggestion_accepted, suggestion_dismissed
+
+### Phase 5e — Adaptive engine + AI tools for routines (In progress)
+- `AdaptiveRecommendationsService`: updateSuggestedTimes, flagMissedRoutines, flagStreakCelebrations, adjustTimeWindows, runAll()
+- New AI tools: `create_routine`, `complete_task`, `accept_time_window_adjustment`, `dismiss_adaptive_suggestion`, `celebrate_streak`
+- Adaptive suggestion UI: Accept/Revert cards in routine detail
+- Trigger: on-app-open + interval timer (backend job in Phase 5f)
+
+### Phase 5f — NestJS backend scaffolding (Pending)
+- NestJS + TypeORM + PostgreSQL + JWT + `@nestjs/schedule` + `@nestjs/throttler`
+- Endpoints: routines CRUD, instances, completions, behavior batch, reminders, adaptive
+- Jobs: `GenerateInstancesForDate` (23:55), `DispatchTodayReminders` (every 5m), `RunAdaptiveAnalysis` (03:00)
+
+### Phase 5g — HTTP repositories + Capacitor push real (Pending)
+- `*-http.repository.ts` mirror of `*-local.repository.ts`
+- Swap binding in `app.providers.ts`
+- `@capacitor/push-notifications`: backend dispatches via FCM/APNs
+
+### Phase 5h — Rebrand: TaskMaster → ControlMaster (Pending)
+- Rename package.json, capacitor.config.ts, angular.json, dist/
+- `com.centur.controlmaster` bundle id
+- `routinesV2Enabled` flag, deprecation warning in /habits
+- Migration v2→v3: cleanup legacy Habit keys
 
 ### Phase 6 — Performance, PWA and polish
 - Zoneless change detection (experimental)
@@ -285,7 +364,14 @@ TaskMaster es una plataforma inteligente para adoptar buenos habitos y dejar mal
 | Fase 4 | Integracion IA (Anthropic Claude + Google Gemini) | Completada |
 | Fase 4.1 | **Elevacion pre-backend — Iter 1 (fundacion IA)** | **Completada** |
 | Fase 4.2 | Elevacion pre-backend — Iter 2–7 | En progreso |
-| Fase 5 | Backend NestJS + Tienda de premios | Pendiente |
+| Fase 5a | Modelos de dominio Routine + repositorios localStorage | **Completada** |
+| Fase 5b | Servicios de rutinas + adaptador Habit→Routine | **Completada** |
+| Fase 5c | UI feature `routines/` (index, hoy, detalle, form) | **Completada** |
+| Fase 5d | Behavior tracking + reminders programados | **Completada** |
+| Fase 5e | Motor adaptativo + tools IA para rutinas | En progreso |
+| Fase 5f | Backend NestJS scaffolding | Pendiente |
+| Fase 5g | Repositorios HTTP + push real Capacitor | Pendiente |
+| Fase 5h | Rebrand: TaskMaster → ControlMaster | Pendiente |
 | Fase 6 | Rendimiento, PWA y polish | Pendiente |
 
 ## Novedades — Iter 1 de elevacion
@@ -302,6 +388,18 @@ La capa de IA paso de respuestas solo-texto a una capa real de ejecucion. Resume
 - **Deuda removida**: hardcode de `perfectWeeks/perfectMonths` en dashboard reemplazado por signals del engine; `gamification.service` ya no escribe `localStorage` directo (va por repo via nuevo `saveChallenges`); boilerplate de `app.component.html` borrado.
 - **Tests unitarios**: specs Jasmine/Karma para `xp.utils`, `streak.utils` y `HabitInsightEngineService`.
 
+## Novedades — Elevacion Phase 5 (Evolucion a Routine Tracker)
+
+El modelo de dominio evoluciono de `Habit` plano + `HabitCompletion` a un pipeline estructurado `Routine → Task → RoutineInstance → TaskCompletion`, absorbiendo las mejores ideas del plan "Control" sin reescribir el frontend.
+
+- **Modelo de dominio Routine** (`src/app/models/routine.model.ts`): union discriminada `ScheduleConfig` (daily/weekly/monthly/custom cron), `RoutineInstance` con ciclo de estados (Pending → InProgress → Completed | Skipped | Missed), tracking de completado por tarea con `completion_score`.
+- **Pipeline de behavior tracking** (`BehaviorTrackerService`): cola debounce (1.5s), flush batch al repositorio, handler `visibilitychange` → `navigator.sendBeacon` preparado para swap a HTTP. Enum `BehaviorEventType` cubre 11 tipos de eventos.
+- **Reminders programados** (`ScheduledReminderService`): materializa `ScheduledReminder[]` desde `ReminderPreference` por rutina, integra Capacitor `LocalNotifications` como canal local.
+- **6 nuevos repositorios** detras de InjectionTokens: `RoutineRepository`, `RoutineInstanceRepository`, `TaskCompletionRepository`, `BehaviorRepository`, `ReminderRepository`, `RoutineStreakRepository` — todos con implementaciones localStorage y specs completos.
+- **RoutineAdapterService**: `Habit` legado coexiste como `Routine` virtual de 1 tarea. Dashboard, achievements e IA tools siguen funcionando durante la transicion.
+- **Feature `routines/`** con rutas lazy-loaded: index (grid de cards), hoy (checklist agregada), detalle (instancia + task rows), crear/editar (formulario multi-step con tabs Basics / Schedule / Tasks).
+- **Componentes UI**: `RoutineCard`, `TaskRow`, `StreakBadge`, `CompletionRing` (SVG), `BottomNav` mobile-first, `EmptyState` reutilizable.
+
 ## Caracteristicas
 
 ### Sistema de habitos
@@ -313,6 +411,17 @@ La capa de IA paso de respuestas solo-texto a una capa real de ejecucion. Resume
 - Rachas con calculo inteligente por frecuencia (dias no programados no rompen la cadena)
 - Calendario heatmap estilo GitHub
 - Tasa de completado y estadisticas
+
+### Tracker de Rutinas (Fase 5 — en progreso)
+- Crear, editar y eliminar **rutinas multi-tarea** (no solo habitos individuales)
+- **Tareas por rutina** con orden, estimacion de duracion, y horas sugeridas adaptativas
+- **Instancias de rutina** por dia: ciclo de estado (Pendiente → En progreso → Completada | Saltada | Perdida)
+- Tracking de completado por tarea con **puntaje de finalizacion** (0-100)
+- **Rachas por rutina**: actual, maxima, celebracion pendiente
+- Tipos de horario: diario, semanal (elegir dias), mensual (dia del mes), cron personalizado
+- **Pipeline de tracking de comportamiento**: 11 tipos de eventos con flush por lotes
+- **Reminders programados** materializados por rutina desde preferencias, con integracion Capacitor LocalNotifications
+- **Coexistencia legado**: habitos antiguos funcionan como rutinas virtuales de 1 tarea via adaptador
 
 ### Gamificacion
 - **Sistema de XP**: gana experiencia al completar habitos
@@ -372,9 +481,13 @@ src/app/
     interfaces/          # Contratos de repositorios (InjectionToken)
     repositories/        # Implementaciones localStorage
     services/            # Logica de negocio (Signals-based)
-      habit-insight-engine.service.ts   # NUEVO — motor de patrones deterministico
-      ai-action-dispatcher.service.ts   # NUEVO — ejecutor de tool-calls
-      ai.service.ts                     # refactor — tool loop + snapshot
+      habit-insight-engine.service.ts   # motor de patrones deterministico
+      ai-action-dispatcher.service.ts   # ejecutor de tool-calls
+      ai.service.ts                     # tool loop + snapshot
+      routine.service.ts                # Phase 5b — CRUD rutinas + signals
+      routine-instance.service.ts       # Phase 5b — instancias + completado de tareas
+      behavior-tracker.service.ts     # Phase 5d — eventos batch debounce
+      scheduled-reminder.service.ts   # Phase 5d — materializacion de reminders
     utils/               # Utilidades (fechas, rachas, XP)
     providers/
       ai/
@@ -390,11 +503,17 @@ src/app/
     pipes/
   features/
     dashboard/
-    habits/
+    habits/                  # Legado — coexiste durante transicion
+    routines/                # Phase 5c — index, hoy, detalle, form, analytics
     achievements/
     rewards/
     profile/
 ```
+
+### Modelos de dominio (Phase 5a)
+- `src/app/models/routine.model.ts` — `Routine`, `Task`, `RoutineInstance`, `TaskCompletion`, `RoutineStreak`, `ScheduleConfig` union discriminada
+- `src/app/models/behavior.model.ts` — `BehaviorEventType` enum, `UserBehaviorEvent`
+- `src/app/models/reminder.model.ts` — `ReminderPreference`, `ScheduledReminder`, `ReminderChannel`, `ReminderStatus`
 
 ### Patrones clave
 - **Repository Pattern**: capa de datos desacoplada detras de injection tokens, localStorage hoy — swap a backend manana
@@ -464,12 +583,50 @@ npx cap doctor
 - **Iter 6**: Perfil + journeys + onboarding (dark mode, onboarding, journeys 21/30/66 dias)
 - **Iter 7**: Mobile polish (notificaciones locales, haptics, modales custom sobre confirms nativos)
 
-### Fase 5 — Backend NestJS + Tienda de premios
-- API REST con NestJS y PostgreSQL
-- Autenticacion JWT con Passport.js (local + Google OAuth)
-- Tienda de premios reales canjeables con puntos
-- Sincronizacion cloud con migracion desde localStorage
-- Historial de canjes con estados
+### Fase 5a — Modelos de dominio Routine + repositorios localStorage (Completada)
+- `Routine`, `Task`, `RoutineInstance`, `TaskCompletion`, `RoutineStreak`, `ScheduleConfig` union discriminada
+- `BehaviorEventType`, `UserBehaviorEvent`
+- `ReminderPreference`, `ScheduledReminder`, `ReminderChannel`, `ReminderStatus`
+- 6 nuevas interfaces de repositorio + implementaciones localStorage con InjectionTokens
+
+### Fase 5b — Servicios de rutinas + adaptador Habit→Routine (Completada)
+- `RoutineService` con signals: activeRoutines, todayRoutines, filteredRoutines
+- `RoutineInstanceService` con getOrCreateForDate, toggleTaskCompletion, recalculo completionScore
+- `RoutineAdapterService`: `Habit` legado coexiste como `Routine` virtual de 1 tarea
+- `MigrationService` v1→v2: inicializa nuevas claves localStorage
+
+### Fase 5c — Feature `routines/` UI (Completada)
+- `routines.routes.ts`: index, hoy, nueva, :id/edit, :id
+- Paginas: `RoutinesIndexPageComponent`, `RoutinesTodayPageComponent`, `RoutineDetailPageComponent`, `RoutineFormPageComponent`
+- Componentes: `RoutineCard`, `TaskRow`, `StreakBadge`, `CompletionRing` (SVG), `BottomNav`
+- Formulario multi-step: Basics / Schedule / Tasks tabs
+
+### Fase 5d — Behavior tracking + reminders programados (Completada)
+- `BehaviorTrackerService`: cola debounce (1.5s), flush batch a `BehaviorRepository`, handler `visibilitychange`
+- `ScheduledReminderService`: materializa reminders desde preferencias, integracion Capacitor `LocalNotifications`
+- 11 tipos de eventos trackeados
+
+### Fase 5e — Motor adaptativo + tools IA para rutinas (En progreso)
+- `AdaptiveRecommendationsService`: updateSuggestedTimes, flagMissedRoutines, flagStreakCelebrations, adjustTimeWindows, runAll()
+- Nuevas tools IA: `create_routine`, `complete_task`, `accept_time_window_adjustment`, `dismiss_adaptive_suggestion`, `celebrate_streak`
+- UI de sugerencias adaptativas: tarjetas Aceptar/Revertir en detalle de rutina
+- Trigger: on-app-open + interval timer (job backend en Fase 5f)
+
+### Fase 5f — Backend NestJS scaffolding (Pendiente)
+- NestJS + TypeORM + PostgreSQL + JWT + `@nestjs/schedule` + `@nestjs/throttler`
+- Endpoints: routines CRUD, instancias, completions, behavior batch, reminders, adaptativo
+- Jobs: `GenerateInstancesForDate` (23:55), `DispatchTodayReminders` (cada 5m), `RunAdaptiveAnalysis` (03:00)
+
+### Fase 5g — Repositorios HTTP + push real Capacitor (Pendiente)
+- `*-http.repository.ts` espejo de `*-local.repository.ts`
+- Cambio de binding en `app.providers.ts`
+- `@capacitor/push-notifications`: backend dispatches via FCM/APNs
+
+### Fase 5h — Rebrand: TaskMaster → ControlMaster (Pendiente)
+- Renombrar package.json, capacitor.config.ts, angular.json, dist/
+- Bundle id `com.centur.controlmaster`
+- Flag `routinesV2Enabled`, warning de deprecacion en /habits
+- Migracion v2→v3: limpieza de claves legado Habit
 
 ### Fase 6 — Rendimiento, PWA y polish
 - Zoneless change detection (experimental)
@@ -505,3 +662,28 @@ Si encuentras valor en esta herramienta y quieres ayudar a que siga creciendo, c
 > **Nota:** Tu apoyo ayuda directamente a financiar los creditos de IA para que mas usuarios puedan disfrutar de los insights personalizados y el Coach IA.
 
 ---
+
+<!--
+  =================================================================
+  EASTER EGG — Rebrand ControlMaster
+  =================================================================
+
+  Si estas leyendo esto, has encontrado el Easter Egg oficial.
+
+  TaskMaster esta evolucionando hacia ControlMaster.
+  El nombre cambia, pero la mision sigue igual:
+  ayudarte a tomar el CONTROL de tus rutinas, habitos y dia a dia
+  con inteligencia adaptativa y gamificacion.
+
+  Phase 5h (el rebrand final) desbloqueara:
+  - com.centur.controlmaster bundle ID
+  - "ControlMaster" en tu pantalla de inicio
+  - El mismo corazon de IA, ahora con un nombre que dice lo que hace.
+
+  Mientras tanto... sigue construyendo esas rutinas.
+  Cada checkmark es un paso hacia el control total.
+
+  #ControlIsComing
+
+  =================================================================
+-->

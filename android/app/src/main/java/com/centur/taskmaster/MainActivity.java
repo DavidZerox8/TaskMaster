@@ -1,4 +1,4 @@
-package com.esga.taskmaster;
+package com.centur.taskmaster;
 
 import com.getcapacitor.BridgeActivity;
 
