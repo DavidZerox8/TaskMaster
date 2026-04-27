@@ -4,13 +4,37 @@ import { Habit, HabitCategory, HabitType, HabitFrequency } from '../../models/ha
 @Injectable({ providedIn: 'root' })
 export class MigrationService {
   private readonly MIGRATION_KEY = 'taskmaster_migration_version';
-  private readonly CURRENT_VERSION = 1;
+  private readonly CURRENT_VERSION = 2;
+  private readonly ROUTINE_KEYS_V2 = [
+    'routines',
+    'routine_tasks',
+    'routine_instances',
+    'task_completions',
+    'routine_streaks',
+    'behavior_events',
+    'reminder_preferences',
+    'scheduled_reminders',
+  ];
 
   migrate(): void {
-    const version = localStorage.getItem(this.MIGRATION_KEY);
-    if (!version || parseInt(version, 10) < this.CURRENT_VERSION) {
+    const raw = localStorage.getItem(this.MIGRATION_KEY);
+    const version = raw ? parseInt(raw, 10) : 0;
+    if (version < 1) {
       this.migrateTodosToHabits();
+    }
+    if (version < 2) {
+      this.initRoutineKeysV2();
+    }
+    if (version < this.CURRENT_VERSION) {
       localStorage.setItem(this.MIGRATION_KEY, String(this.CURRENT_VERSION));
+    }
+  }
+
+  private initRoutineKeysV2(): void {
+    for (const key of this.ROUTINE_KEYS_V2) {
+      if (localStorage.getItem(key) === null) {
+        localStorage.setItem(key, '[]');
+      }
     }
   }
 
