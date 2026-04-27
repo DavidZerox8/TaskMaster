@@ -37,9 +37,9 @@ interface NavItem {
 export class BottomNavComponent {
   navItems: NavItem[] = [
     { path: '/dashboard', label: 'Inicio', icon: '📊' },
+    { path: '/routines', label: 'Rutinas', icon: '📋' },
     { path: '/habits', label: 'Habitos', icon: '🔄' },
     { path: '/achievements', label: 'Logros', icon: '🏆' },
-    { path: '/rewards', label: 'Premios', icon: '🎁' },
     { path: '/profile', label: 'Perfil', icon: '👤' },
   ];
 }

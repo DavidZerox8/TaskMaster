@@ -86,6 +86,7 @@ export class SidebarComponent {
 
   navItems: NavItem[] = [
     { path: '/dashboard', label: 'Dashboard', icon: '📊' },
+    { path: '/routines', label: 'Rutinas', icon: '📋' },
     { path: '/habits', label: 'Mis Habitos', icon: '🔄' },
     { path: '/achievements', label: 'Logros', icon: '🏆' },
     { path: '/rewards', label: 'Premios', icon: '🎁' },

@@ -19,6 +19,12 @@ export const routes: Routes = [
         .then(m => m.HABIT_ROUTES),
   },
   {
+    path: 'routines',
+    loadChildren: () =>
+      import('./features/routines/routines.routes')
+        .then(m => m.ROUTINE_ROUTES),
+  },
+  {
     path: 'achievements',
     loadComponent: () =>
       import('./features/achievements/pages/achievements-page/achievements-page.component')
