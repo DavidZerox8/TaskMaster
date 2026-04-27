@@ -2,12 +2,30 @@ import { Provider } from '@angular/core';
 import { HABIT_REPOSITORY_TOKEN } from '../interfaces/habit-repository.interface';
 import { GAMIFICATION_REPOSITORY_TOKEN } from '../interfaces/gamification-repository.interface';
 import { USER_REPOSITORY_TOKEN } from '../interfaces/user-repository.interface';
+import { ROUTINE_REPOSITORY_TOKEN } from '../interfaces/routine-repository.interface';
+import { ROUTINE_INSTANCE_REPOSITORY_TOKEN } from '../interfaces/routine-instance-repository.interface';
+import { TASK_COMPLETION_REPOSITORY_TOKEN } from '../interfaces/task-completion-repository.interface';
+import { ROUTINE_STREAK_REPOSITORY_TOKEN } from '../interfaces/routine-streak-repository.interface';
+import { BEHAVIOR_REPOSITORY_TOKEN } from '../interfaces/behavior-repository.interface';
+import { REMINDER_REPOSITORY_TOKEN } from '../interfaces/reminder-repository.interface';
 import { HabitLocalRepository } from '../repositories/habit-local.repository';
 import { GamificationLocalRepository } from '../repositories/gamification-local.repository';
 import { UserLocalRepository } from '../repositories/user-local.repository';
+import { RoutineLocalRepository } from '../repositories/routine-local.repository';
+import { RoutineInstanceLocalRepository } from '../repositories/routine-instance-local.repository';
+import { TaskCompletionLocalRepository } from '../repositories/task-completion-local.repository';
+import { RoutineStreakLocalRepository } from '../repositories/routine-streak-local.repository';
+import { BehaviorLocalRepository } from '../repositories/behavior-local.repository';
+import { ReminderLocalRepository } from '../repositories/reminder-local.repository';
 
 export const APP_REPOSITORY_PROVIDERS: Provider[] = [
   { provide: HABIT_REPOSITORY_TOKEN, useClass: HabitLocalRepository },
   { provide: GAMIFICATION_REPOSITORY_TOKEN, useClass: GamificationLocalRepository },
   { provide: USER_REPOSITORY_TOKEN, useClass: UserLocalRepository },
+  { provide: ROUTINE_REPOSITORY_TOKEN, useClass: RoutineLocalRepository },
+  { provide: ROUTINE_INSTANCE_REPOSITORY_TOKEN, useClass: RoutineInstanceLocalRepository },
+  { provide: TASK_COMPLETION_REPOSITORY_TOKEN, useClass: TaskCompletionLocalRepository },
+  { provide: ROUTINE_STREAK_REPOSITORY_TOKEN, useClass: RoutineStreakLocalRepository },
+  { provide: BEHAVIOR_REPOSITORY_TOKEN, useClass: BehaviorLocalRepository },
+  { provide: REMINDER_REPOSITORY_TOKEN, useClass: ReminderLocalRepository },
 ];
