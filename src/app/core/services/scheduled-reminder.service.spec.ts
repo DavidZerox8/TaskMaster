@@ -3,7 +3,7 @@ import { firstValueFrom } from 'rxjs';
 import { ScheduledReminderService } from './scheduled-reminder.service';
 import { RoutineService } from './routine.service';
 import { APP_REPOSITORY_PROVIDERS } from '../providers/app.providers';
-import { REMINDER_REPOSITORY_TOKEN } from '../interfaces/reminder-repository.interface';
+import { IReminderRepository, REMINDER_REPOSITORY_TOKEN } from '../interfaces/reminder-repository.interface';
 import {
   ReminderChannel,
   ReminderStatus,
@@ -13,7 +13,7 @@ import { ScheduleType } from '../../models/routine.model';
 describe('ScheduledReminderService', () => {
   let service: ScheduledReminderService;
   let routineService: RoutineService;
-  let reminderRepo: ReturnType<typeof TestBed.inject<typeof REMINDER_REPOSITORY_TOKEN>>;
+  let reminderRepo: IReminderRepository;
 
   beforeEach(() => {
     localStorage.clear();
