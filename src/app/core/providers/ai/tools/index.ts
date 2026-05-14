@@ -1,6 +1,16 @@
 import { AIToolDefinition } from '../../../../models/ai.model';
 
-export { AI_TOOL_CATALOG, TOOL_CREATE_HABIT, TOOL_ADJUST_HABIT, TOOL_ARCHIVE_HABIT } from './tool-schemas';
+export {
+  AI_TOOL_CATALOG,
+  TOOL_CREATE_HABIT,
+  TOOL_ADJUST_HABIT,
+  TOOL_ARCHIVE_HABIT,
+  TOOL_CREATE_ROUTINE,
+  TOOL_COMPLETE_TASK,
+  TOOL_ACCEPT_TIME_WINDOW_ADJUSTMENT,
+  TOOL_DISMISS_ADAPTIVE_SUGGESTION,
+  TOOL_CELEBRATE_STREAK,
+} from './tool-schemas';
 
 /**
  * Anthropic Tools API shape:

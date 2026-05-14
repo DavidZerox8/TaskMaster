@@ -35,7 +35,7 @@ TaskMaster is an intelligent platform for building good habits and breaking bad 
 | Phase 5b | Routine services + habit-to-routine adapter | **Completed** |
 | Phase 5c | Feature `routines/` UI (index, today, detail, form) | **Completed** |
 | Phase 5d | Behavior tracking + scheduled reminders pipeline | **Completed** |
-| Phase 5e | Adaptive engine + AI tools for routines | In progress |
+| Phase 5e | Adaptive engine + AI tools for routines + UI/UX elevation | **Completed** |
 | Phase 5f | NestJS backend scaffolding | Pending |
 | Phase 5g | HTTP repositories + Capacitor push real | Pending |
 | Phase 5h | Rebrand: TaskMaster → ControlMaster | Pending |
@@ -67,6 +67,21 @@ The domain model evolved from flat `Habit` + `HabitCompletion` to a structured `
 - **Feature `routines/`** with lazy-loaded routes: index (grid cards), today (aggregated checklist), detail (instance + task rows), create/edit (multi-step form with Basics / Schedule / Tasks tabs).
 - **UI components**: `RoutineCard`, `TaskRow`, `StreakBadge`, `CompletionRing` (SVG progress), `BottomNav` mobile-first, `EmptyState` reusable.
 
+## Highlights — Phase 5e (Adaptive engine + UI/UX elevation)
+
+The routine domain went from passive tracker to adaptive coach:
+
+- **`AdaptiveRecommendationsService`**: detects time-window drift (mode hour from completions vs scheduled `timeWindowStart`), missed routines (3+ scheduled days without completion), and pending streak celebrations. `runAll()` is single-flight, exposes `proposedSuggestions` signal.
+- **`AdaptiveSuggestion` + repository**: discriminated union payloads (`time_window_adjust` | `streak_celebration` | `missed_routine` | `task_reorder`), localStorage repo with deduplication via `hasOpenForRoutineAndType`, snapshot of previous schedule for revert.
+- **5 new AI tools** (8 total in catalog): `create_routine`, `complete_task`, `accept_time_window_adjustment`, `dismiss_adaptive_suggestion`, `celebrate_streak`. The dispatcher validates args, calls the right service, and surfaces resourceRoute `/routines/:id` on action chips.
+- **App-open + interval trigger**: `app.component` runs `AdaptiveRecommendationsService.runAll()` on init, on `visibilitychange → visible`, and every 30 min while foreground.
+- **UI/UX elevation** of `routines/`:
+  - Hero gradients per page (slate→violet for index, indigo→fuchsia for today, routine color for detail).
+  - `routines-today` groups routines by time bucket (Morning/Afternoon/Evening/Flexible) with stats card row and contextual greeting.
+  - Skeleton loader on first paint, animated suggestion cards with paletted variants (amber/emerald/indigo).
+  - `routine-detail` integrates `AdaptiveSuggestionCardComponent`, replaces native `confirm()` with `app-modal`, sticky action footer, fires `BehaviorTrackerService` events (routine_opened, task_checked, suggestion_accepted/dismissed).
+- **Specs**: `adaptive-recommendations.service.spec.ts` covers streak celebration creation, time-window proposal with sample threshold, `runAll` aggregation, and time-window apply with snapshot.
+
 ## Features
 
 ### Habit system
@@ -79,7 +94,7 @@ The domain model evolved from flat `Habit` + `HabitCompletion` to a structured `
 - GitHub-style heatmap calendar
 - Completion rate and statistics
 
-### Routine Tracker (Phase 5 — in progress)
+### Routine Tracker (Phase 5 — Phase 5e completed)
 - Create, edit and delete **multi-task routines** (not just single habits)
 - **Tasks per routine** with order, duration estimates, and adaptive suggested times
 - **Routine instances** per day: status lifecycle (Pending → InProgress → Completed | Skipped | Missed)
@@ -274,11 +289,13 @@ npx cap doctor
 - `ScheduledReminderService`: materialize reminders from preferences, Capacitor `LocalNotifications` integration
 - 11 event types tracked: routine_opened, task_checked, task_unchecked, routine_completed, streak_continued, streak_broken, reminder_dismissed, reminder_acted, time_window_adjusted, suggestion_accepted, suggestion_dismissed
 
-### Phase 5e — Adaptive engine + AI tools for routines (In progress)
-- `AdaptiveRecommendationsService`: updateSuggestedTimes, flagMissedRoutines, flagStreakCelebrations, adjustTimeWindows, runAll()
-- New AI tools: `create_routine`, `complete_task`, `accept_time_window_adjustment`, `dismiss_adaptive_suggestion`, `celebrate_streak`
-- Adaptive suggestion UI: Accept/Revert cards in routine detail
-- Trigger: on-app-open + interval timer (backend job in Phase 5f)
+### Phase 5e — Adaptive engine + AI tools for routines + UI/UX elevation (Completed)
+- `AdaptiveRecommendationsService`: `updateSuggestedTimes`, `flagMissedRoutines`, `flagStreakCelebrations`, `adjustTimeWindows`, `runAll()` with single-flight guard
+- `AdaptiveSuggestion` model + `IAdaptiveSuggestionRepository` + localStorage impl with dedup
+- 5 new AI tools wired to dispatcher: `create_routine`, `complete_task`, `accept_time_window_adjustment`, `dismiss_adaptive_suggestion`, `celebrate_streak`
+- `AdaptiveSuggestionCardComponent` (Accept/Revert/Dismiss) embedded in routine detail
+- Trigger: on `app-open`, on `visibilitychange → visible`, and every 30 min interval (backend job will replace it in Phase 5f)
+- UI/UX elevation of `routines/`: gradient heroes, skeleton loaders, time-bucket grouping in Today, sticky action footer + modal-based delete in detail, `BehaviorTrackerService` integrated
 
 ### Phase 5f — NestJS backend scaffolding (Pending)
 - NestJS + TypeORM + PostgreSQL + JWT + `@nestjs/schedule` + `@nestjs/throttler`
@@ -368,7 +385,7 @@ TaskMaster es una plataforma inteligente para adoptar buenos habitos y dejar mal
 | Fase 5b | Servicios de rutinas + adaptador Habit→Routine | **Completada** |
 | Fase 5c | UI feature `routines/` (index, hoy, detalle, form) | **Completada** |
 | Fase 5d | Behavior tracking + reminders programados | **Completada** |
-| Fase 5e | Motor adaptativo + tools IA para rutinas | En progreso |
+| Fase 5e | Motor adaptativo + tools IA para rutinas + elevacion UI/UX | **Completada** |
 | Fase 5f | Backend NestJS scaffolding | Pendiente |
 | Fase 5g | Repositorios HTTP + push real Capacitor | Pendiente |
 | Fase 5h | Rebrand: TaskMaster → ControlMaster | Pendiente |
@@ -400,6 +417,21 @@ El modelo de dominio evoluciono de `Habit` plano + `HabitCompletion` a un pipeli
 - **Feature `routines/`** con rutas lazy-loaded: index (grid de cards), hoy (checklist agregada), detalle (instancia + task rows), crear/editar (formulario multi-step con tabs Basics / Schedule / Tasks).
 - **Componentes UI**: `RoutineCard`, `TaskRow`, `StreakBadge`, `CompletionRing` (SVG), `BottomNav` mobile-first, `EmptyState` reutilizable.
 
+## Novedades — Fase 5e (Motor adaptativo + elevacion UI/UX)
+
+El dominio de rutinas paso de tracker pasivo a coach adaptativo:
+
+- **`AdaptiveRecommendationsService`**: detecta drift de horario (hora dominante de los completions vs `timeWindowStart` programado), rutinas perdidas (3+ dias programados sin completar) y celebraciones de racha pendientes. `runAll()` es single-flight, expone signal `proposedSuggestions`.
+- **`AdaptiveSuggestion` + repositorio**: payloads de union discriminada (`time_window_adjust` | `streak_celebration` | `missed_routine` | `task_reorder`), repo localStorage con dedup via `hasOpenForRoutineAndType`, snapshot del schedule previo para revert.
+- **5 nuevas tools IA** (8 totales en el catalogo): `create_routine`, `complete_task`, `accept_time_window_adjustment`, `dismiss_adaptive_suggestion`, `celebrate_streak`. El dispatcher valida args, llama al servicio correcto y expone resourceRoute `/routines/:id` en los action chips.
+- **Trigger app-open + intervalo**: `app.component` corre `runAll()` en init, en `visibilitychange → visible`, y cada 30 min mientras la app este foreground.
+- **Elevacion UI/UX** de `routines/`:
+  - Heros con gradiente por pagina (slate→violet en index, indigo→fuchsia en hoy, color de rutina en detalle).
+  - `routines-today` agrupa por franja horaria (Manana/Tarde/Noche/Flexible) con stats card y saludo contextual.
+  - Skeleton loader en primer paint, suggestion cards con paletas (amber/emerald/indigo) y slide-up animation.
+  - `routine-detail` integra `AdaptiveSuggestionCardComponent`, reemplaza `confirm()` nativo por `app-modal`, footer sticky de acciones, dispara eventos `BehaviorTrackerService` (routine_opened, task_checked, suggestion_accepted/dismissed).
+- **Specs**: `adaptive-recommendations.service.spec.ts` cubre creacion de celebracion de racha, propuesta de time-window con threshold de muestras, agregacion de `runAll`, y aplicacion de time-window con snapshot.
+
 ## Caracteristicas
 
 ### Sistema de habitos
@@ -412,7 +444,7 @@ El modelo de dominio evoluciono de `Habit` plano + `HabitCompletion` a un pipeli
 - Calendario heatmap estilo GitHub
 - Tasa de completado y estadisticas
 
-### Tracker de Rutinas (Fase 5 — en progreso)
+### Tracker de Rutinas (Fase 5 — Fase 5e completada)
 - Crear, editar y eliminar **rutinas multi-tarea** (no solo habitos individuales)
 - **Tareas por rutina** con orden, estimacion de duracion, y horas sugeridas adaptativas
 - **Instancias de rutina** por dia: ciclo de estado (Pendiente → En progreso → Completada | Saltada | Perdida)
@@ -606,11 +638,13 @@ npx cap doctor
 - `ScheduledReminderService`: materializa reminders desde preferencias, integracion Capacitor `LocalNotifications`
 - 11 tipos de eventos trackeados
 
-### Fase 5e — Motor adaptativo + tools IA para rutinas (En progreso)
-- `AdaptiveRecommendationsService`: updateSuggestedTimes, flagMissedRoutines, flagStreakCelebrations, adjustTimeWindows, runAll()
-- Nuevas tools IA: `create_routine`, `complete_task`, `accept_time_window_adjustment`, `dismiss_adaptive_suggestion`, `celebrate_streak`
-- UI de sugerencias adaptativas: tarjetas Aceptar/Revertir en detalle de rutina
-- Trigger: on-app-open + interval timer (job backend en Fase 5f)
+### Fase 5e — Motor adaptativo + tools IA para rutinas + elevacion UI/UX (Completada)
+- `AdaptiveRecommendationsService`: `updateSuggestedTimes`, `flagMissedRoutines`, `flagStreakCelebrations`, `adjustTimeWindows`, `runAll()` con guard single-flight
+- Modelo `AdaptiveSuggestion` + `IAdaptiveSuggestionRepository` + impl localStorage con dedup
+- 5 nuevas tools IA conectadas al dispatcher: `create_routine`, `complete_task`, `accept_time_window_adjustment`, `dismiss_adaptive_suggestion`, `celebrate_streak`
+- `AdaptiveSuggestionCardComponent` (Aceptar/Revertir/Descartar) integrado en detalle de rutina
+- Trigger: en `app-open`, en `visibilitychange → visible`, e intervalo cada 30 min (un job backend lo reemplazara en Fase 5f)
+- Elevacion UI/UX de `routines/`: heros con gradiente, skeleton loaders, agrupacion por franja horaria en Hoy, footer de acciones sticky + modal personalizado en detalle, integracion `BehaviorTrackerService`
 
 ### Fase 5f — Backend NestJS scaffolding (Pendiente)
 - NestJS + TypeORM + PostgreSQL + JWT + `@nestjs/schedule` + `@nestjs/throttler`

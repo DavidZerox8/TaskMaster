@@ -8,6 +8,7 @@ import { TASK_COMPLETION_REPOSITORY_TOKEN } from '../interfaces/task-completion-
 import { ROUTINE_STREAK_REPOSITORY_TOKEN } from '../interfaces/routine-streak-repository.interface';
 import { BEHAVIOR_REPOSITORY_TOKEN } from '../interfaces/behavior-repository.interface';
 import { REMINDER_REPOSITORY_TOKEN } from '../interfaces/reminder-repository.interface';
+import { ADAPTIVE_SUGGESTION_REPOSITORY_TOKEN } from '../interfaces/adaptive-suggestion-repository.interface';
 import { HabitLocalRepository } from '../repositories/habit-local.repository';
 import { GamificationLocalRepository } from '../repositories/gamification-local.repository';
 import { UserLocalRepository } from '../repositories/user-local.repository';
@@ -17,6 +18,7 @@ import { TaskCompletionLocalRepository } from '../repositories/task-completion-l
 import { RoutineStreakLocalRepository } from '../repositories/routine-streak-local.repository';
 import { BehaviorLocalRepository } from '../repositories/behavior-local.repository';
 import { ReminderLocalRepository } from '../repositories/reminder-local.repository';
+import { AdaptiveSuggestionLocalRepository } from '../repositories/adaptive-suggestion-local.repository';
 
 export const APP_REPOSITORY_PROVIDERS: Provider[] = [
   { provide: HABIT_REPOSITORY_TOKEN, useClass: HabitLocalRepository },
@@ -28,4 +30,5 @@ export const APP_REPOSITORY_PROVIDERS: Provider[] = [
   { provide: ROUTINE_STREAK_REPOSITORY_TOKEN, useClass: RoutineStreakLocalRepository },
   { provide: BEHAVIOR_REPOSITORY_TOKEN, useClass: BehaviorLocalRepository },
   { provide: REMINDER_REPOSITORY_TOKEN, useClass: ReminderLocalRepository },
+  { provide: ADAPTIVE_SUGGESTION_REPOSITORY_TOKEN, useClass: AdaptiveSuggestionLocalRepository },
 ];
