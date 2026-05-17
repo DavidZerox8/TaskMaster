@@ -1,4 +1,4 @@
-import { Component, EventEmitter, HostListener, Input, Output } from '@angular/core';
+﻿import { Component, ChangeDetectionStrategy, EventEmitter, HostListener, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TodoFiltersComponent } from '../todo-filters/todo-filters.component';
 import { TodoFilters } from '../../models/todo.model';
@@ -8,7 +8,8 @@ import { TodoFilters } from '../../models/todo.model';
   standalone: true,
   imports: [CommonModule, TodoFiltersComponent],
   templateUrl: './ui-filters-drawer.component.html',
-  styleUrls: ['./ui-filters-drawer.component.css']
+  styleUrls: ['./ui-filters-drawer.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class UiFiltersDrawerComponent {
   @Input() open = false;

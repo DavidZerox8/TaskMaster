@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+﻿import { Component, ChangeDetectionStrategy, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subject, takeUntil } from 'rxjs';
@@ -24,7 +24,8 @@ import { UiPreferencesService } from '../../core/services/ui-preferences.service
     TodoStatsCompactComponent
   ],
   templateUrl: './todo-list.component.html',
-  styleUrls: ['./todo-list.component.css']
+  styleUrls: ['./todo-list.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class TodoListComponent implements OnInit, OnDestroy {
   todos: Todo[] = [];
@@ -75,7 +76,7 @@ export class TodoListComponent implements OnInit, OnDestroy {
   }
 
   onUpdateTodo(todo: Todo): void {
-    // Esta funcionalidad se implementará en el componente TodoItem
+    // Esta funcionalidad se implementarÃ¡ en el componente TodoItem
   }
 
   onFiltersChange(filters: TodoFilters): void {

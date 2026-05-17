@@ -69,17 +69,19 @@ describe('streak.utils', () => {
       expect(result.currentStreak).toBe(1);
     });
 
-    it('allows gap over non-scheduled day for WEEKDAYS frequency', () => {
-      const friday = new Date();
-      while (friday.getDay() !== 5) friday.setDate(friday.getDate() - 1);
-      const fri = startOfDay(friday);
-      const monBefore = addDays(fri, -4);
+    it('allows gap over non-scheduled days for WEEKDAYS frequency', () => {
+      // Build a fixed Friday and the following Monday so Sat/Sun are the only gap.
+      // Both must be in the past so daysSinceLast accounting is deterministic.
+      const today = startOfDay(new Date());
+      let monday = addDays(today, -7);
+      while (monday.getDay() !== 1) monday = addDays(monday, -1);
+      const fridayBefore = addDays(monday, -3);
       const comps = [
-        completion('h1', fri),
-        completion('h1', monBefore),
+        completion('h1', monday),
+        completion('h1', fridayBefore),
       ];
       const result = calculateStreak(comps, HabitFrequency.WEEKDAYS);
-      expect(result.currentStreak).toBeGreaterThanOrEqual(2);
+      expect(result.longestStreak).toBeGreaterThanOrEqual(2);
     });
 
     it('deduplicates same-day completions', () => {

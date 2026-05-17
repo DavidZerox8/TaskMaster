@@ -9,10 +9,12 @@ import { GamificationService } from '../../../../core/services/gamification.serv
     @if (gamificationService.levelUpEvent(); as event) {
       <div class="fixed inset-0 z-[70] flex items-center justify-center p-4">
         <!-- Backdrop -->
-        <div class="absolute inset-0 bg-black/60 animate-fade-in" (click)="dismiss()"></div>
+        <div class="absolute inset-0 animate-fade-in"
+             style="background-color: color-mix(in oklch, var(--color-surface-fg) 70%, transparent);"
+             (click)="dismiss()"></div>
 
         <!-- Content -->
-        <div class="relative bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden animate-level-up-enter">
+        <div class="relative bg-white rounded-2xl shadow-md border border-gray-200 max-w-sm w-full overflow-hidden animate-level-up-enter">
           <!-- Top gradient -->
           <div class="h-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
 
@@ -28,7 +30,7 @@ import { GamificationService } from '../../../../core/services/gamification.serv
 
           <div class="relative p-8 text-center">
             <!-- Level badge -->
-            <div class="mx-auto w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-xl animate-bounce-in mb-4">
+            <div class="mx-auto w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-sm animate-bounce-in mb-4">
               <span class="text-3xl font-black text-white">{{ event.newLevel }}</span>
             </div>
 

@@ -8,7 +8,7 @@ import { GamificationService } from '../../../../core/services/gamification.serv
   template: `
     @for (event of gamificationService.achievementEvents(); track event.id) {
       <div class="fixed bottom-20 left-1/2 -translate-x-1/2 z-[65] animate-achievement-slide pointer-events-auto sm:bottom-8">
-        <div class="flex items-center gap-3 px-5 py-3 rounded-2xl bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-300 shadow-xl shadow-amber-100/50">
+        <div class="flex items-center gap-3 px-5 py-3 rounded-2xl bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-300 shadow-sm">
           <div class="flex-shrink-0 w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center animate-bounce-in">
             <span class="text-2xl">{{ event.icon }}</span>
           </div>

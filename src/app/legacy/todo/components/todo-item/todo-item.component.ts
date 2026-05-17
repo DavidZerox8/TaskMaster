@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+﻿import { Component, ChangeDetectionStrategy, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Todo, Priority } from '../../models/todo.model';
 
@@ -7,7 +7,8 @@ import { Todo, Priority } from '../../models/todo.model';
   standalone: true,
   imports: [CommonModule],
   templateUrl: './todo-item.component.html',
-  styleUrls: ['./todo-item.component.css']
+  styleUrls: ['./todo-item.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class TodoItemComponent {
   @Input() todo!: Todo;
@@ -52,7 +53,7 @@ export class TodoItemComponent {
   }
 
   onDelete(): void {
-    if (confirm('¿Estás seguro de que quieres eliminar esta tarea?')) {
+    if (confirm('Â¿EstÃ¡s seguro de que quieres eliminar esta tarea?')) {
       this.delete.emit(this.todo);
     }
   }
