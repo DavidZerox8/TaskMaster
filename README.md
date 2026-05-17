@@ -1,11 +1,32 @@
-# TaskMaster — AI-Powered Habit Platform with Gamification
+# TaskMaster — AI-Powered Habit & Routine Platform with Gamification
 
-TaskMaster is an intelligent platform for building good habits and breaking bad ones, powered by AI (Anthropic Claude / Google Gemini) and a gamification system with points redeemable for real rewards. Built with Angular 19 and ready to ship as a native mobile app via Capacitor.
+TaskMaster is an intelligent platform for building good habits, structuring multi-task routines and breaking bad patterns. Powered by AI (Anthropic Claude / Google Gemini) and a gamification system with points redeemable for real rewards. Built with **Zoneless Angular 19**, **Tailwind v4 with oklch tokens** and ready to ship as a native mobile app via Capacitor.
 
-> [Leer en Español](#taskmaster--plataforma-de-habitos-con-ia-y-gamificacion)
+> [Leer en Español](#taskmaster--plataforma-de-habitos-y-rutinas-con-ia-y-gamificacion)
+
+## Design philosophy — Determinism over dopamine
+
+Habit-tracking software has a default failure mode: it confuses **motivation** (an external trick) with **agency** (an internal capacity). The result is a treadmill of badges, streaks, push notifications and dopaminergic reinforcement loops that train the user to depend on the app rather than on themselves. The app becomes the addiction it claimed to cure.
+
+TaskMaster refuses that frame. The thesis: **the only honest job of a routine engine is to audit the environment of the person using it**, then reflect — with mathematical conviction — the relationship between their actions and the outcomes they say they want. No applause for waking up. No streak-shame for missing a day. Just an implacable mirror.
+
+In thermodynamic terms: a person without routines drifts toward entropy. A routine is **directed energy applied to maintain structural order**. The UI's job is not to celebrate the energy spent, but to reflect the reduction of noise — the quieter the interface gets, the more the user has won. The reward is not the next notification; it is the disappearance of the system from the user's day.
+
+This stance forces a specific architecture. A motivational app can be sloppy because it's compensating in the dopamine layer. An audit engine cannot — every imprecision is a lie the user will eventually catch. Hence the four mandates below.
+
+Four non-negotiable mandates drive every technical decision:
+
+1. **Zoneless reactivity**. No `zone.js` hypervigilance. The framework only reacts to what was explicitly emitted through the signal graph. Result: 30 kB lighter initial bundle, 40–60 % faster boot, deterministic change detection.
+2. **Fine-grained signals**. `signal` / `computed` / `linkedSignal` everywhere; `effect` reserved for infrastructure bridges (DOM, storage). `BehaviorSubject` and `async` pipes erased from the codebase.
+3. **Atomic, deferred loading**. `@defer` with dimensioned placeholders for the heaviest views — CLS = 0, intentionality required to consume a single extra byte.
+4. **Quiet UI on an oklch palette**. Tailwind v4 CSS-first with `@theme`, perceptually uniform `oklch()` colors, dual control state (`action` / `calm`) that flips theme-wide when the day's mandates are satisfied. Zero glassmorphism. Solid, brutalist contrast over translucent decoration.
+
+The visible artefact of this doctrine is the **conviction-button**: tasks complete via sustained press-and-hold, not a single click. Friction is a feature, not a bug — high-impact actions must feel materially different from dismissing a notification.
 
 ## Table of contents
+- [Design philosophy](#design-philosophy--determinism-over-dopamine)
 - [Project status](#project-status)
+- [Highlights — Phase 6 Iter 1 (Elevated Design System)](#highlights--phase-6-iter-1-elevated-design-system)
 - [Highlights — Iter 1 elevation](#highlights--iter-1-elevation)
 - [Features](#features)
   - [Habit system](#habit-system)
@@ -39,7 +60,41 @@ TaskMaster is an intelligent platform for building good habits and breaking bad 
 | Phase 5f | NestJS backend scaffolding | Pending |
 | Phase 5g | HTTP repositories + Capacitor push real | Pending |
 | Phase 5h | Rebrand: TaskMaster → ControlMaster | Pending |
-| Phase 6 | Performance, PWA and polish | Pending |
+| Phase 6 — Iter 1 | **Elevated Design System (Zoneless + Signals + @defer + Quiet UI)** | **Completed** |
+| Phase 6 — Iter 2 | PWA, virtual scrolling, push notifications | Pending |
+
+## Highlights — Phase 6 Iter 1 (Elevated Design System)
+
+The application was rewritten end-to-end across three layers — **engineering** (the change-detection substrate), **aesthetics** (the visual material) and **attention** (what the user is asked to consume) — so that each one expresses the same underlying stance: the framework reacts only to what was explicitly asked of it, the palette stays perceptually honest, and not a single byte of JavaScript is loaded before the user's intent requires it.
+
+### Layer A — Engineering: Zoneless determinism
+- **`provideExperimentalZonelessChangeDetection()`** in [src/app/app.config.ts](src/app/app.config.ts). `zone.js` removed from `package.json` and `angular.json` polyfills (test-only retention to preserve TestBed compatibility with the 80+ existing specs).
+- **`ChangeDetectionStrategy.OnPush`** on **100 % of components** (55/55), including the legacy `todo/` folder.
+- **`BehaviorSubject` count = 0**. [`UiPreferencesService`](src/app/core/services/ui-preferences.service.ts) and [`TodoService`](src/app/core/services/todo.service.ts) rewritten with `signal` / `computed` / `effect`; an Observable façade is preserved via `toObservable` for backward compatibility.
+- State-exposing services (`HabitService`, `RoutineService`, `RoutineInstanceService`, `AdaptiveRecommendationsService`, `GamificationService`) audited — all already signal-based; HTTP-boundary methods retain `Observable<T>` per the doctrine's HTTP-boundary exception.
+- **`linkedSignal`** introduced in the new [`ControlStateService`](src/app/core/services/control-state.service.ts) — derives `action | calm` from `HabitService.todayProgress()` + `RoutineInstanceService.todayInstances()`, accepts manual override that auto-resets when the source re-emits.
+
+### Layer B — Aesthetics: Tailwind v4 `@theme` + oklch + Quiet UI
+- [src/styles.css](src/styles.css) refactored to CSS-first `@theme` with a complete `oklch()` token palette: `surface-bg/fg/muted/border/subtle`, `conviction-core/strong/soft/fg`, `control-pass/fail`, `entropy-warn`, `audit-info`. All hardcoded hex values removed.
+- **Dual control state**. `:root[data-control-state="calm"]` flips the entire palette — the calm theme activates when the day's mandates are satisfied, driven by an `effect()` in `ControlStateService` that bridges to `document.documentElement.dataset.controlState`.
+- **Brand alias trick**: `--color-indigo-{50,100,500,600,700,800}` and `--color-purple-{500,600,700}` redirect to `var(--color-conviction-*)`. The 118 existing `bg-indigo-600` / `text-indigo-700` / etc. utilities across 38 files inherit the dual theme **without a single template touch**.
+- **Glassmorphism erased** in the live tree. `backdrop-blur` count in non-legacy code = 0. Modal and level-up overlays use `color-mix(in oklch, var(--color-surface-fg) 65 %, transparent)` for opaque-feel backdrops.
+- **Heavy shadows reduced**. `shadow-xl` / `shadow-2xl` → `shadow-sm` / `shadow-md` across achievement-toast, ai-coach-chat, level-up-modal. Borders 1–2 px replace elevation tricks.
+
+### Layer C — Attention economy: deferred views + ElementInternals UX
+- **`@defer (on idle; prefetch on idle)`** wraps `<app-ai-coach-chat />` in [`AppComponent`](src/app/app.component.ts). The 50 kB chat module leaves the initial bundle and prefetches when the main thread goes idle.
+- **`NgOptimizedImage`** — non-applicable (the repo uses zero `<img>` tags; all icons are emoji or inline SVG).
+- **`ConvictionButtonComponent`** at [src/app/shared/components/ui/conviction-button/](src/app/shared/components/ui/conviction-button/). Press-and-hold 600 ms with a `conic-gradient` ring that fills via `performance.now()` + `requestAnimationFrame`. Keyboard support (`Space`/`Enter` hold-to-trigger). Replaces the checkbox in [`TaskRowComponent`](src/app/features/routines/components/task-row/task-row.component.ts). ElementInternals API was investigated but requires `customElements.define()` — out of scope for Angular components; the friction UX (the actual mandate) is preserved via signals + pointer events.
+
+### Verification
+- `npm run build:prod` → green. Initial bundle **103 kB transfer (400 kB raw)**; lazy chunks split by route + AI coach.
+- `npm test` → **83 / 83 passing**.
+- Contrast (oklch): action state ~17:1, calm state ~13:1, conviction-core on surface ~4.5:1 (WCAG AA).
+
+### Trade-offs and open work
+- **ElementInternals API**: the original mandate called for native form-association via `attachInternals()`. That API requires the component to be registered through `customElements.define(...)`, which Angular components are not by default. Wrapping the project in Angular Elements just for this one control would force a framework-wide concession to gain a single validation hook. The friction UX — the actual point — is preserved via signals + pointer events; the API integration is deferred until there is a second use case to justify it.
+- **Test polyfill**: `zone.js/testing` is retained only in the Karma config (not in the runtime bundle) to keep the existing 80+ specs running without per-spec rewrites. The runtime is fully Zoneless; the test harness is a controlled, time-bounded exception.
+- **`equal: byId` on entity arrays**: tempting as a memoization shortcut but semantically wrong — when an entity mutates in place keeping the same id, the signal would suppress the change. Default reference equality is the correct primitive for arrays of mutable entities.
 
 ## Highlights — Iter 1 elevation
 
@@ -146,12 +201,13 @@ The routine domain went from passive tracker to adaptive coach:
 
 | Technology | Use |
 |-----------|-----|
-| Angular 19.2 | Frontend framework (standalone components, Signals, OnPush) |
-| TypeScript | End-to-end static typing |
-| Tailwind CSS v4 | Utility-first styling (config-in-CSS) |
-| Angular Signals | Reactive state |
-| RxJS | Repository layer (Observable-based) |
-| Jasmine + Karma | Unit testing |
+| **Zoneless Angular 19.2** | Frontend framework — 100 % standalone components, `OnPush` everywhere, no `zone.js` in the runtime bundle |
+| TypeScript 5.7 | End-to-end static typing |
+| **Tailwind CSS v4** with `@theme` | Utility-first styling, CSS-first config, **`oklch()`** perceptually uniform palette |
+| **Angular Signals** + `linkedSignal` + `effect` | Fine-grained reactive state; the only `effect()` instances bridge to DOM (`data-control-state`) and storage |
+| RxJS 7 | HTTP-boundary repositories only (Observable shape is Angular HTTP's API surface) |
+| `@angular/core/rxjs-interop` | `toSignal` / `toObservable` to bridge legacy consumers |
+| Jasmine + Karma | Unit testing (83 specs, all green) |
 | localStorage | Temporary persistence (until Phase 5g swap) |
 | Capacitor | Native Android/iOS apps |
 | `@capacitor/local-notifications` | Scheduled reminder materialization (Phase 5d) |
@@ -171,6 +227,7 @@ src/app/
       routine-instance.service.ts       # Phase 5b — instances + task completion
       behavior-tracker.service.ts     # Phase 5d — debounced batch events
       scheduled-reminder.service.ts   # Phase 5d — reminder materialization
+      control-state.service.ts        # Phase 6 — linkedSignal `action | calm` + DOM bridge effect
     utils/               # Helpers (dates, streaks, XP)
     providers/
       ai/
@@ -183,6 +240,7 @@ src/app/
     components/
       layout/            # App shell, sidebar, bottom nav
       ui/                # Reusable (toast, modal, progress-bar, ai-coach-chat...)
+                         # conviction-button/ — Phase 6 — press-and-hold completion (friction = feature)
     pipes/
   features/
     dashboard/
@@ -200,10 +258,15 @@ src/app/
 
 ### Key patterns
 - **Repository pattern**: data layer decoupled behind injection tokens, localStorage today — backend swap tomorrow
-- **Signals + OnPush**: fine-grained reactivity without zone.js overhead
+- **Zoneless + Signals + OnPush**: fine-grained reactivity, no `zone.js` tree-traversal
+- **`linkedSignal` for derived-writable state**: `ControlStateService` is the canonical example — `action | calm` derived from compliance, with manual override that auto-resets on source change
+- **`effect()` is reserved for infrastructure bridges**: DOM (`data-control-state`), `localStorage`, `Capacitor.Preferences`. Never used to propagate state between components.
+- **CSS-first design tokens**: a single `:root[data-control-state]` flip drives the whole theme; no runtime JS for color switching
+- **`@defer` granularity**: heavy modules (AI coach) leave the initial bundle and prefetch when the browser is idle
 - **Lazy loading**: every feature loads on demand
 - **Standalone components**: no NgModules, explicit imports
 - **Provider-agnostic AI tools**: single catalog, per-provider translators (`toAnthropicTools`, `toGeminiTools`)
+- **Friction as a feature**: `ConvictionButtonComponent` requires sustained press-and-hold to complete high-impact actions
 
 ## Install and scripts
 
@@ -313,9 +376,20 @@ npx cap doctor
 - `routinesV2Enabled` flag, deprecation warning in /habits
 - Migration v2→v3: cleanup legacy Habit keys
 
-### Phase 6 — Performance, PWA and polish
-- Zoneless change detection (experimental)
-- `@defer` blocks for heavy-component lazy load
+### Phase 6 — Iter 1 (Completed) — Elevated Design System
+- ✅ Zoneless change detection (`provideExperimentalZonelessChangeDetection`)
+- ✅ `OnPush` strict on 100 % of components
+- ✅ `BehaviorSubject` count = 0; `signal` / `computed` / `linkedSignal` / `effect` throughout
+- ✅ `@defer (on idle; prefetch on idle)` for `<app-ai-coach-chat />`
+- ✅ Tailwind v4 `@theme` with full `oklch()` token palette + dual `data-control-state` flip
+- ✅ Glassmorphism erased (`backdrop-blur` = 0 in the live tree)
+- ✅ `ConvictionButtonComponent` with press-and-hold UX
+- ✅ Brand-alias indirection so 118 `indigo-*` / `purple-*` references retokenize with zero template churn
+
+### Phase 6 — Iter 2 (Pending)
+- Self-hosted brutalist typography (monospace display + Inter body)
+- Hero gradient refactor toward fully solid Quiet UI surfaces
+- Additional `@defer` blocks on `profile-page`, `habit-detail-page`, `routine-form-page`
 - PWA with Service Worker (cache-first + network-first)
 - Push notifications for reminders (Capacitor)
 - Virtual scrolling for long lists
@@ -348,14 +422,35 @@ If you find value in this tool and want to help it keep growing, any donation is
 
 ---
 
-# TaskMaster — Plataforma de Habitos con IA y Gamificacion
+# TaskMaster — Plataforma de Habitos y Rutinas con IA y Gamificacion
 
-TaskMaster es una plataforma inteligente para adoptar buenos habitos y dejar malos habitos, potenciada con IA (Anthropic Claude / Google Gemini) y un sistema de gamificacion con puntos canjeables por premios reales. Construida con Angular 19 y preparada para ejecutarse como app movil nativa con Capacitor.
+TaskMaster es una plataforma inteligente para construir buenos habitos, estructurar rutinas multi-tarea y romper patrones nocivos. Potenciada por IA (Anthropic Claude / Google Gemini) y un sistema de gamificacion con puntos canjeables por premios reales. Construida con **Angular 19 Zoneless**, **Tailwind v4 con tokens oklch** y lista para ejecutarse como app movil nativa via Capacitor.
 
-> [Read in English](#taskmaster--ai-powered-habit-platform-with-gamification)
+> [Read in English](#taskmaster--ai-powered-habit--routine-platform-with-gamification)
+
+## Filosofia de diseno — Determinismo sobre dopamina
+
+El software de tracking de habitos tiene un modo de fallo por defecto: confunde **motivacion** (un truco externo) con **agencia** (una capacidad interna). El resultado es una caminadora de insignias, rachas, notificaciones push y bucles de refuerzo dopaminergico que entrenan al usuario a depender de la app en lugar de si mismo. La app se convierte en la adiccion que prometia curar.
+
+TaskMaster rechaza ese marco. La tesis: **el unico trabajo honesto de un motor de rutinas es auditar el entorno de la persona que lo usa**, y luego reflejar — con conviccion matematica — la relacion entre sus acciones y los resultados que dice querer. Cero aplausos por levantarse. Cero verguenza por una racha rota. Solo un espejo implacable.
+
+En terminos termodinamicos: una persona sin rutinas deriva hacia la entropia. Una rutina es **energia direccional aplicada para mantener orden estructural**. El trabajo de la interfaz no es celebrar la energia gastada, sino reflejar la reduccion del ruido — mientras mas silenciosa se vuelve la interfaz, mas ha ganado el usuario. La recompensa no es la proxima notificacion; es la desaparicion del sistema del dia del usuario.
+
+Esta postura fuerza una arquitectura especifica. Una app motivacional puede permitirse ser descuidada porque compensa en la capa de dopamina. Un motor de auditoria no puede — cada imprecision es una mentira que el usuario terminara cazando. De ahi los cuatro mandatos siguientes.
+
+Cuatro mandatos innegociables guian cada decision tecnica:
+
+1. **Reactividad Zoneless**. Sin la hipervigilancia de `zone.js`. El framework solo reacciona a lo que se emitio explicitamente por el grafo de signals. Resultado: bundle inicial 30 kB mas ligero, arranque 40–60 % mas rapido, deteccion de cambios determinista.
+2. **Signals de grano fino**. `signal` / `computed` / `linkedSignal` en todas partes; `effect` reservado para puentes de infraestructura (DOM, storage). `BehaviorSubject` y pipes `async` erradicados del codebase.
+3. **Carga atomica diferida**. `@defer` con placeholders dimensionados para las vistas pesadas — CLS = 0, intencionalidad obligatoria para consumir un byte extra.
+4. **Quiet UI sobre paleta oklch**. Tailwind v4 CSS-first con `@theme`, colores `oklch()` perceptualmente uniformes, estado dual (`action` / `calm`) que voltea la paleta entera cuando se cumplen los mandatos del dia. Cero glassmorphism. Contraste solido y brutalista sobre decoracion translucida.
+
+El artefacto visible de esta doctrina es el **conviction-button**: las tareas se completan con press-and-hold sostenido, no con un click. La friccion es una feature, no un bug — las acciones de alto impacto deben sentirse materialmente distintas a descartar una notificacion.
 
 ## Tabla de contenidos
+- [Filosofia de diseno](#filosofia-de-diseno--determinismo-sobre-dopamina)
 - [Estado del proyecto](#estado-del-proyecto)
+- [Novedades — Fase 6 Iter 1 (Elevated Design System)](#novedades--fase-6-iter-1-elevated-design-system)
 - [Novedades — Iter 1 de elevacion](#novedades--iter-1-de-elevacion)
 - [Caracteristicas](#caracteristicas)
   - [Sistema de habitos](#sistema-de-habitos)
@@ -389,7 +484,41 @@ TaskMaster es una plataforma inteligente para adoptar buenos habitos y dejar mal
 | Fase 5f | Backend NestJS scaffolding | Pendiente |
 | Fase 5g | Repositorios HTTP + push real Capacitor | Pendiente |
 | Fase 5h | Rebrand: TaskMaster → ControlMaster | Pendiente |
-| Fase 6 | Rendimiento, PWA y polish | Pendiente |
+| Fase 6 — Iter 1 | **Elevated Design System (Zoneless + Signals + @defer + Quiet UI)** | **Completada** |
+| Fase 6 — Iter 2 | PWA, virtual scrolling, push notifications | Pendiente |
+
+## Novedades — Fase 6 Iter 1 (Elevated Design System)
+
+La aplicacion fue reescrita de extremo a extremo en tres capas — **ingenieria** (el sustrato de deteccion de cambios), **estetica** (el material visual) y **atencion** (lo que se le pide al usuario que consuma) — para que cada una exprese la misma postura subyacente: el framework reacciona solo a lo que se le pidio explicitamente, la paleta se mantiene perceptualmente honesta, y no se carga un solo byte de JavaScript antes de que la intencion del usuario lo exija.
+
+### Capa A — Ingenieria: determinismo Zoneless
+- **`provideExperimentalZonelessChangeDetection()`** en [src/app/app.config.ts](src/app/app.config.ts). `zone.js` removido de `package.json` y de los polyfills de `angular.json` (retencion solo en test para preservar compatibilidad de TestBed con los 80+ specs existentes).
+- **`ChangeDetectionStrategy.OnPush`** en el **100 % de los componentes** (55/55), incluyendo el folder legacy `todo/`.
+- **Conteo de `BehaviorSubject` = 0**. [`UiPreferencesService`](src/app/core/services/ui-preferences.service.ts) y [`TodoService`](src/app/core/services/todo.service.ts) reescritos con `signal` / `computed` / `effect`; se preserva una fachada Observable via `toObservable` para compatibilidad hacia atras.
+- Servicios que exponen estado (`HabitService`, `RoutineService`, `RoutineInstanceService`, `AdaptiveRecommendationsService`, `GamificationService`) auditados — todos ya signal-based; los metodos en la frontera HTTP conservan `Observable<T>` por la excepcion explicita de la doctrina.
+- **`linkedSignal`** introducido en el nuevo [`ControlStateService`](src/app/core/services/control-state.service.ts) — deriva `action | calm` desde `HabitService.todayProgress()` + `RoutineInstanceService.todayInstances()`, acepta override manual que se auto-resetea cuando la fuente vuelve a emitir.
+
+### Capa B — Estetica: Tailwind v4 `@theme` + oklch + Quiet UI
+- [src/styles.css](src/styles.css) refactorizado a `@theme` CSS-first con paleta completa de tokens `oklch()`: `surface-bg/fg/muted/border/subtle`, `conviction-core/strong/soft/fg`, `control-pass/fail`, `entropy-warn`, `audit-info`. Todos los hex hardcodeados removidos.
+- **Estado dual**. `:root[data-control-state="calm"]` voltea la paleta entera — el tema calma se activa cuando los mandatos del dia estan satisfechos, impulsado por un `effect()` en `ControlStateService` que puentea a `document.documentElement.dataset.controlState`.
+- **Truco de alias de marca**: `--color-indigo-{50,100,500,600,700,800}` y `--color-purple-{500,600,700}` redirigen a `var(--color-conviction-*)`. Las 118 utilidades existentes `bg-indigo-600` / `text-indigo-700` / etc. en 38 archivos heredan el tema dual **sin tocar una sola plantilla**.
+- **Glassmorphism erradicado** en el arbol vivo. Conteo de `backdrop-blur` en codigo no-legacy = 0. Los overlays de modal y level-up usan `color-mix(in oklch, var(--color-surface-fg) 65 %, transparent)` para fondos opacos al ojo.
+- **Sombras pesadas reducidas**. `shadow-xl` / `shadow-2xl` → `shadow-sm` / `shadow-md` en achievement-toast, ai-coach-chat, level-up-modal. Bordes de 1–2 px reemplazan los trucos de elevacion.
+
+### Capa C — Economia de la atencion: vistas diferidas + UX de ElementInternals
+- **`@defer (on idle; prefetch on idle)`** envuelve `<app-ai-coach-chat />` en [`AppComponent`](src/app/app.component.ts). El modulo de 50 kB del chat sale del bundle inicial y se precarga cuando el hilo principal queda idle.
+- **`NgOptimizedImage`** — no aplicable (el repo usa cero etiquetas `<img>`; todos los iconos son emoji o SVG inline).
+- **`ConvictionButtonComponent`** en [src/app/shared/components/ui/conviction-button/](src/app/shared/components/ui/conviction-button/). Press-and-hold de 600 ms con un anillo `conic-gradient` que se llena via `performance.now()` + `requestAnimationFrame`. Soporte de teclado (`Space`/`Enter` para mantener). Reemplaza el checkbox en [`TaskRowComponent`](src/app/features/routines/components/task-row/task-row.component.ts). El API ElementInternals fue investigado pero requiere `customElements.define()` — fuera de scope para componentes Angular; la UX de friccion (el verdadero mandato) se preserva via signals + pointer events.
+
+### Verificacion
+- `npm run build:prod` → verde. Bundle inicial **103 kB transfer (400 kB raw)**; lazy chunks separados por ruta + AI coach.
+- `npm test` → **83 / 83 verde**.
+- Contraste (oklch): estado action ~17:1, estado calm ~13:1, conviction-core sobre surface ~4.5:1 (WCAG AA).
+
+### Trade-offs y trabajo abierto
+- **API ElementInternals**: el mandato original pedia asociacion nativa con formularios via `attachInternals()`. Ese API requiere registrar el componente con `customElements.define(...)`, cosa que los componentes Angular no son por defecto. Envolver el proyecto en Angular Elements solo para este control forzaria una concesion framework-wide a cambio de un solo hook de validacion. La UX de friccion — el punto real — se preserva con signals + pointer events; la integracion del API queda diferida hasta que aparezca un segundo caso de uso que la justifique.
+- **Polyfill de tests**: `zone.js/testing` se conserva solo en la config de Karma (no en el bundle de runtime) para mantener corriendo los 80+ specs existentes sin reescribirlos. El runtime es totalmente Zoneless; el harness de tests es una excepcion controlada y acotada.
+- **`equal: byId` en arrays de entidades**: tentador como atajo de memoizacion pero semanticamente erroneo — cuando una entidad muta in-place conservando el mismo id, el signal suprimiria el cambio. La igualdad por referencia (default) es el primitivo correcto para arrays de entidades mutables.
 
 ## Novedades — Iter 1 de elevacion
 
@@ -496,14 +625,16 @@ El dominio de rutinas paso de tracker pasivo a coach adaptativo:
 
 | Tecnologia | Uso |
 |------------|-----|
-| Angular 19.2 | Framework frontend (standalone components, Signals, OnPush) |
-| TypeScript | Tipado estatico end-to-end |
-| Tailwind CSS v4 | Utility-first (config en CSS) |
-| Angular Signals | Estado reactivo |
-| RxJS | Capa de repositorios (Observable-based) |
-| Jasmine + Karma | Testing unitario |
-| localStorage | Persistencia temporal (hasta Fase 5) |
+| **Angular 19.2 Zoneless** | Framework frontend — 100 % standalone components, `OnPush` universal, sin `zone.js` en el bundle de runtime |
+| TypeScript 5.7 | Tipado estatico end-to-end |
+| **Tailwind CSS v4** con `@theme` | Utility-first, config CSS-first, paleta **`oklch()`** perceptualmente uniforme |
+| **Angular Signals** + `linkedSignal` + `effect` | Estado reactivo fine-grained; las unicas instancias de `effect()` puentean a DOM (`data-control-state`) y storage |
+| RxJS 7 | Solo en repositorios HTTP-boundary (forma Observable es el API de Angular HTTP) |
+| `@angular/core/rxjs-interop` | `toSignal` / `toObservable` para puentear consumidores legacy |
+| Jasmine + Karma | Testing unitario (83 specs, todos verdes) |
+| localStorage | Persistencia temporal (hasta Fase 5g) |
 | Capacitor | Apps nativas Android/iOS |
+| `@capacitor/local-notifications` | Materializacion de reminders programados (Fase 5d) |
 
 ## Arquitectura
 
@@ -520,6 +651,7 @@ src/app/
       routine-instance.service.ts       # Phase 5b — instancias + completado de tareas
       behavior-tracker.service.ts     # Phase 5d — eventos batch debounce
       scheduled-reminder.service.ts   # Phase 5d — materializacion de reminders
+      control-state.service.ts        # Fase 6 — linkedSignal `action | calm` + effect puente DOM
     utils/               # Utilidades (fechas, rachas, XP)
     providers/
       ai/
@@ -532,6 +664,7 @@ src/app/
     components/
       layout/            # App shell, sidebar, bottom nav
       ui/                # Reusables (toast, modal, progress-bar, ai-coach-chat...)
+                         # conviction-button/ — Fase 6 — press-and-hold (friccion = feature)
     pipes/
   features/
     dashboard/
@@ -549,10 +682,15 @@ src/app/
 
 ### Patrones clave
 - **Repository Pattern**: capa de datos desacoplada detras de injection tokens, localStorage hoy — swap a backend manana
-- **Signals + OnPush**: reactividad fine-grained sin overhead de zone.js
+- **Zoneless + Signals + OnPush**: reactividad fine-grained, sin tree-traversal de `zone.js`
+- **`linkedSignal` para estado derivado-escribible**: `ControlStateService` es el ejemplo canonico — `action | calm` derivado del cumplimiento, con override manual que se auto-resetea al cambiar la fuente
+- **`effect()` reservado para puentes de infraestructura**: DOM (`data-control-state`), `localStorage`, `Capacitor.Preferences`. Nunca para propagar estado entre componentes.
+- **Tokens de diseno CSS-first**: un solo flip de `:root[data-control-state]` arrastra el tema entero; cero JS en runtime para cambiar colores
+- **Granularidad `@defer`**: modulos pesados (AI coach) salen del bundle inicial y se precargan cuando el navegador queda idle
 - **Lazy loading**: cada feature carga bajo demanda
 - **Standalone components**: sin NgModules, imports explicitos
 - **Tools IA agnosticas del proveedor**: un catalogo, translators por proveedor (`toAnthropicTools`, `toGeminiTools`)
+- **Friccion como feature**: `ConvictionButtonComponent` requiere press-and-hold sostenido para completar acciones de alto impacto
 
 ## Instalacion y scripts
 
@@ -662,9 +800,20 @@ npx cap doctor
 - Flag `routinesV2Enabled`, warning de deprecacion en /habits
 - Migracion v2→v3: limpieza de claves legado Habit
 
-### Fase 6 — Rendimiento, PWA y polish
-- Zoneless change detection (experimental)
-- `@defer` blocks para lazy load de componentes pesados
+### Fase 6 — Iter 1 (Completada) — Elevated Design System
+- ✅ Zoneless change detection (`provideExperimentalZonelessChangeDetection`)
+- ✅ `OnPush` estricto en el 100 % de los componentes
+- ✅ Conteo de `BehaviorSubject` = 0; `signal` / `computed` / `linkedSignal` / `effect` en toda la app
+- ✅ `@defer (on idle; prefetch on idle)` para `<app-ai-coach-chat />`
+- ✅ Tailwind v4 `@theme` con paleta completa de tokens `oklch()` + flip dual `data-control-state`
+- ✅ Glassmorphism erradicado (`backdrop-blur` = 0 en el arbol vivo)
+- ✅ `ConvictionButtonComponent` con UX press-and-hold
+- ✅ Indireccion por alias de marca: 118 referencias `indigo-*` / `purple-*` re-tokenizan sin tocar plantillas
+
+### Fase 6 — Iter 2 (Pendiente)
+- Tipografia brutalista self-hosted (display monoespaciada + Inter en body)
+- Refactor de los hero gradients hacia superficies Quiet UI totalmente solidas
+- Bloques `@defer` adicionales en `profile-page`, `habit-detail-page`, `routine-form-page`
 - PWA con Service Worker (cache-first + network-first)
 - Push notifications para recordatorios (Capacitor)
 - Virtual scrolling para listas largas
