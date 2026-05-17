@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+﻿import { Component, ChangeDetectionStrategy, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subject, takeUntil } from 'rxjs';
@@ -10,7 +10,8 @@ import { TodoCreateRequest, Priority } from '../../models/todo.model';
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './todo-form.component.html',
-  styleUrls: ['./todo-form.component.css']
+  styleUrls: ['./todo-form.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class TodoFormComponent implements OnInit, OnDestroy {
   todoForm: TodoCreateRequest = {

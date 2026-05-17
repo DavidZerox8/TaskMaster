@@ -1,144 +1,122 @@
-import { Injectable, Inject } from '@angular/core';
-import { BehaviorSubject, Observable, combineLatest } from 'rxjs';
-import { map, switchMap, tap } from 'rxjs/operators';
+import { Injectable, Inject, computed, signal } from '@angular/core';
+import { Observable, tap } from 'rxjs';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { ITodoRepository, TODO_REPOSITORY_TOKEN } from '../interfaces/todo-repository.interface';
 import { Todo, TodoCreateRequest, TodoUpdateRequest, TodoFilters, Priority } from '../../models/todo.model';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class TodoService {
-  private todosSubject = new BehaviorSubject<Todo[]>([]);
-  private filtersSubject = new BehaviorSubject<TodoFilters>({});
-  private loadingSubject = new BehaviorSubject<boolean>(false);
+  private readonly todosSignal = signal<Todo[]>([]);
+  private readonly filtersSignal = signal<TodoFilters>({});
+  private readonly loadingSignal = signal<boolean>(false);
 
-  public todos$ = this.todosSubject.asObservable();
-  public filters$ = this.filtersSubject.asObservable();
-  public loading$ = this.loadingSubject.asObservable();
+  readonly todos = this.todosSignal.asReadonly();
+  readonly filters = this.filtersSignal.asReadonly();
+  readonly loading = this.loadingSignal.asReadonly();
 
-  public filteredTodos$ = combineLatest([this.todos$, this.filters$]).pipe(
-    map(([todos, filters]) => this.applyFilters(todos, filters))
+  readonly filteredTodos = computed(() => this.applyFilters(this.todosSignal(), this.filtersSignal()));
+  readonly completedTodos = computed(() => this.todosSignal().filter((t) => t.completed));
+  readonly pendingTodos = computed(() => this.todosSignal().filter((t) => !t.completed));
+  readonly urgentTodos = computed(() =>
+    this.todosSignal().filter((t) => t.priority === Priority.URGENT && !t.completed),
   );
+  readonly categories = computed(() => {
+    const seen = new Set<string>();
+    for (const todo of this.todosSignal()) {
+      if (todo.category) seen.add(todo.category);
+    }
+    return [...seen];
+  });
+  readonly stats = computed(() => {
+    const todos = this.todosSignal();
+    const total = todos.length;
+    const completed = todos.filter((t) => t.completed).length;
+    const pending = total - completed;
+    const urgent = todos.filter((t) => t.priority === Priority.URGENT && !t.completed).length;
+    return {
+      total,
+      completed,
+      pending,
+      urgent,
+      completionRate: total > 0 ? (completed / total) * 100 : 0,
+    };
+  });
 
-  public completedTodos$ = this.todos$.pipe(
-    map(todos => todos.filter(todo => todo.completed))
-  );
-
-  public pendingTodos$ = this.todos$.pipe(
-    map(todos => todos.filter(todo => !todo.completed))
-  );
-
-  public urgentTodos$ = this.todos$.pipe(
-    map(todos => todos.filter(todo => todo.priority === Priority.URGENT && !todo.completed))
-  );
-
-  public categories$ = this.todos$.pipe(
-    map(todos => {
-      const categories = todos
-        .map(t => t.category)
-        .filter((category): category is string => Boolean(category));
-      return [...new Set(categories)];
-    })
-  );
+  /** Backward-compatible Observable façades for legacy consumers. */
+  readonly todos$ = toObservable(this.todosSignal);
+  readonly filters$ = toObservable(this.filtersSignal);
+  readonly loading$ = toObservable(this.loadingSignal);
+  readonly filteredTodos$ = toObservable(this.filteredTodos);
+  readonly completedTodos$ = toObservable(this.completedTodos);
+  readonly pendingTodos$ = toObservable(this.pendingTodos);
+  readonly urgentTodos$ = toObservable(this.urgentTodos);
+  readonly categories$ = toObservable(this.categories);
 
   constructor(@Inject(TODO_REPOSITORY_TOKEN) private todoRepository: ITodoRepository) {
     this.loadTodos();
   }
 
-  private applyFilters(todos: Todo[], filters: TodoFilters): Todo[] {
-    return todos.filter(todo => {
-      if (filters.completed !== undefined && todo.completed !== filters.completed) {
-        return false;
-      }
-      if (filters.priority && todo.priority !== filters.priority) {
-        return false;
-      }
-      if (filters.category && todo.category !== filters.category) {
-        return false;
-      }
-      if (filters.searchTerm) {
-        const searchLower = filters.searchTerm.toLowerCase();
-        const matchesTitle = todo.title.toLowerCase().includes(searchLower);
-        const matchesDescription = todo.description?.toLowerCase().includes(searchLower);
-        if (!matchesTitle && !matchesDescription) {
-          return false;
-        }
-      }
-      return true;
-    });
-  }
-
-  private setLoading(loading: boolean): void {
-    this.loadingSubject.next(loading);
-  }
-
   loadTodos(): void {
-    this.setLoading(true);
-    this.todoRepository.getAll().pipe(
-      tap(todos => {
-        this.todosSubject.next(todos);
-        this.setLoading(false);
-      })
-    ).subscribe();
+    this.loadingSignal.set(true);
+    this.todoRepository
+      .getAll()
+      .pipe(
+        tap((todos) => {
+          this.todosSignal.set(todos);
+          this.loadingSignal.set(false);
+        }),
+      )
+      .subscribe();
   }
 
   createTodo(todoRequest: TodoCreateRequest): Observable<Todo> {
-    this.setLoading(true);
+    this.loadingSignal.set(true);
     return this.todoRepository.create(todoRequest).pipe(
-      tap(newTodo => {
-        const currentTodos = this.todosSubject.value;
-        this.todosSubject.next([...currentTodos, newTodo]);
-        this.setLoading(false);
-      })
+      tap((newTodo) => {
+        this.todosSignal.update((current) => [...current, newTodo]);
+        this.loadingSignal.set(false);
+      }),
     );
   }
 
   updateTodo(id: string, updateRequest: TodoUpdateRequest): Observable<Todo> {
-    this.setLoading(true);
+    this.loadingSignal.set(true);
     return this.todoRepository.update(id, updateRequest).pipe(
-      tap(updatedTodo => {
-        const currentTodos = this.todosSubject.value;
-        const updatedTodos = currentTodos.map(todo =>
-          todo.id === id ? updatedTodo : todo
-        );
-        this.todosSubject.next(updatedTodos);
-        this.setLoading(false);
-      })
+      tap((updatedTodo) => {
+        this.todosSignal.update((current) => current.map((t) => (t.id === id ? updatedTodo : t)));
+        this.loadingSignal.set(false);
+      }),
     );
   }
 
   deleteTodo(id: string): Observable<boolean> {
-    this.setLoading(true);
+    this.loadingSignal.set(true);
     return this.todoRepository.delete(id).pipe(
       tap(() => {
-        const currentTodos = this.todosSubject.value;
-        const filteredTodos = currentTodos.filter(todo => todo.id !== id);
-        this.todosSubject.next(filteredTodos);
-        this.setLoading(false);
-      })
+        this.todosSignal.update((current) => current.filter((t) => t.id !== id));
+        this.loadingSignal.set(false);
+      }),
     );
   }
 
   toggleComplete(id: string): Observable<Todo> {
-    this.setLoading(true);
+    this.loadingSignal.set(true);
     return this.todoRepository.toggleComplete(id).pipe(
-      tap(updatedTodo => {
-        const currentTodos = this.todosSubject.value;
-        const updatedTodos = currentTodos.map(todo =>
-          todo.id === id ? updatedTodo : todo
-        );
-        this.todosSubject.next(updatedTodos);
-        this.setLoading(false);
-      })
+      tap((updatedTodo) => {
+        this.todosSignal.update((current) => current.map((t) => (t.id === id ? updatedTodo : t)));
+        this.loadingSignal.set(false);
+      }),
     );
   }
 
   setFilters(filters: TodoFilters): void {
-    this.filtersSubject.next(filters);
+    this.filtersSignal.set(filters);
   }
 
   clearFilters(): void {
-    this.filtersSubject.next({});
+    this.filtersSignal.set({});
   }
 
   getTodoById(id: string): Observable<Todo | null> {
@@ -149,23 +127,19 @@ export class TodoService {
     return this.todoRepository.getCategories();
   }
 
-  // Métodos de utilidad para estadísticas
-  getStats() {
-    return this.todos$.pipe(
-      map(todos => {
-        const total = todos.length;
-        const completed = todos.filter(t => t.completed).length;
-        const pending = total - completed;
-        const urgent = todos.filter(t => t.priority === Priority.URGENT && !t.completed).length;
-
-        return {
-          total,
-          completed,
-          pending,
-          urgent,
-          completionRate: total > 0 ? (completed / total) * 100 : 0
-        };
-      })
-    );
+  private applyFilters(todos: Todo[], filters: TodoFilters): Todo[] {
+    return todos.filter((todo) => {
+      if (filters.completed !== undefined && todo.completed !== filters.completed) return false;
+      if (filters.priority && todo.priority !== filters.priority) return false;
+      if (filters.category && todo.category !== filters.category) return false;
+      if (filters.searchTerm) {
+        const searchLower = filters.searchTerm.toLowerCase();
+        const matchesTitle = todo.title.toLowerCase().includes(searchLower);
+        const matchesDescription = todo.description?.toLowerCase().includes(searchLower);
+        if (!matchesTitle && !matchesDescription) return false;
+      }
+      return true;
+    });
   }
 }
+

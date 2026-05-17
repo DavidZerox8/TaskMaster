@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+﻿import { Component, ChangeDetectionStrategy, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Subject, takeUntil } from 'rxjs';
 import { TodoService } from '../../core/services/todo.service';
@@ -16,7 +16,8 @@ interface TodoStats {
   standalone: true,
   imports: [CommonModule],
   templateUrl: './todo-stats.component.html',
-  styleUrls: ['./todo-stats.component.css']
+  styleUrls: ['./todo-stats.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class TodoStatsComponent implements OnInit, OnDestroy {
   stats: TodoStats = {

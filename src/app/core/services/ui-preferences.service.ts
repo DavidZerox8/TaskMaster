@@ -1,5 +1,5 @@
-import { Injectable } from '@angular/core';
-import { BehaviorSubject } from 'rxjs';
+import { Injectable, computed, effect, signal } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 
 interface UiPreferencesState {
   completedCollapsed: boolean;
@@ -8,24 +8,44 @@ interface UiPreferencesState {
 
 const STORAGE_KEY = 'ui-preferences';
 
+const DEFAULT_STATE: UiPreferencesState = {
+  completedCollapsed: false,
+  showStatsCompact: true,
+};
+
+function readInitialState(): UiPreferencesState {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return stored ? { ...DEFAULT_STATE, ...JSON.parse(stored) } : DEFAULT_STATE;
+  } catch {
+    return DEFAULT_STATE;
+  }
+}
+
 @Injectable({ providedIn: 'root' })
 export class UiPreferencesService {
-  private stateSubject: BehaviorSubject<UiPreferencesState>;
+  private readonly stateSignal = signal<UiPreferencesState>(readInitialState());
 
-  public readonly state$;
+  readonly state = this.stateSignal.asReadonly();
+  readonly completedCollapsed = computed(() => this.stateSignal().completedCollapsed);
+  readonly showStatsCompact = computed(() => this.stateSignal().showStatsCompact);
+
+  /** Backward-compatible Observable façade for legacy consumers. */
+  readonly state$ = toObservable(this.stateSignal);
 
   constructor() {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    const initial: UiPreferencesState = stored
-      ? JSON.parse(stored)
-      : { completedCollapsed: false, showStatsCompact: true };
-
-    this.stateSubject = new BehaviorSubject<UiPreferencesState>(initial);
-    this.state$ = this.stateSubject.asObservable();
+    effect(() => {
+      const snapshot = this.stateSignal();
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+      } catch {
+        /* storage may be unavailable; mandate forbids silent retries */
+      }
+    });
   }
 
   get value(): UiPreferencesState {
-    return this.stateSubject.value;
+    return this.stateSignal();
   }
 
   setCompletedCollapsed(collapsed: boolean): void {
@@ -41,8 +61,6 @@ export class UiPreferencesService {
   }
 
   private patch(partial: Partial<UiPreferencesState>): void {
-    const next = { ...this.value, ...partial };
-    this.stateSubject.next(next);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    this.stateSignal.update((current) => ({ ...current, ...partial }));
   }
 }
