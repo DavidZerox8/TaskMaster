@@ -1,17 +1,19 @@
 import { Component, ChangeDetectionStrategy, input, output } from '@angular/core';
+import { ConvictionButtonComponent } from '../../../../shared/components/ui/conviction-button/conviction-button.component';
 import { Task } from '../../../../models/routine.model';
 
 @Component({
   selector: 'app-task-row',
   standalone: true,
+  imports: [ConvictionButtonComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <label class="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-indigo-300 transition-colors"
-           [class.opacity-60]="completed()">
-      <input type="checkbox"
-             class="w-5 h-5 accent-indigo-600 cursor-pointer"
-             [checked]="completed()"
-             (change)="toggle.emit(task().id)" />
+    <div class="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg transition-colors"
+         [class.opacity-60]="completed()">
+      <app-conviction-button
+        [completed]="completed()"
+        [ariaLabel]="'Mantener pulsado para completar ' + task().name"
+        (complete)="toggle.emit(task().id)" />
       <div class="flex-1 min-w-0">
         <p class="text-sm font-medium text-gray-900 truncate"
            [class.line-through]="completed()">{{ task().name }}</p>
@@ -27,7 +29,7 @@ import { Task } from '../../../../models/routine.model';
       @if (showHandle()) {
         <span class="text-gray-300 cursor-grab" aria-hidden="true">⋮⋮</span>
       }
-    </label>
+    </div>
   `,
 })
 export class TaskRowComponent {

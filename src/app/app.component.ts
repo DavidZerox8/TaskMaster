@@ -28,7 +28,9 @@ const ADAPTIVE_INTERVAL_MS = 30 * 60 * 1000;
     <app-xp-popup />
     <app-level-up-modal />
     <app-achievement-toast />
-    <app-ai-coach-chat />
+    @defer (on idle; prefetch on idle) {
+      <app-ai-coach-chat />
+    }
   `,
 })
 export class AppComponent implements OnInit, OnDestroy {
