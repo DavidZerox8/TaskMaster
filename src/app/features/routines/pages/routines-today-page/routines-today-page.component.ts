@@ -32,15 +32,15 @@ interface RoutineGroup {
         <p class="text-sm text-white/80">{{ greeting() }}</p>
         <h1 class="text-2xl font-bold mt-0.5">Tu dia, paso a paso</h1>
         <div class="mt-4 grid grid-cols-3 gap-3">
-          <div class="rounded-xl bg-white/15 backdrop-blur p-3">
+          <div class="rounded-xl bg-white/20 border border-white/40 p-3">
             <p class="text-xs text-white/75">Programadas</p>
             <p class="text-2xl font-bold">{{ todayList().length }}</p>
           </div>
-          <div class="rounded-xl bg-white/15 backdrop-blur p-3">
+          <div class="rounded-xl bg-white/20 border border-white/40 p-3">
             <p class="text-xs text-white/75">Completadas</p>
             <p class="text-2xl font-bold">{{ completedCount() }}</p>
           </div>
-          <div class="rounded-xl bg-white/15 backdrop-blur p-3">
+          <div class="rounded-xl bg-white/20 border border-white/40 p-3">
             <p class="text-xs text-white/75">Progreso</p>
             <p class="text-2xl font-bold">{{ overallProgress() }}%</p>
           </div>

@@ -39,13 +39,13 @@ import { AdaptiveSuggestionCardComponent } from '../../components/adaptive-sugge
           [style.background]="heroGradient(r)">
           <div class="flex items-center gap-3">
             <a routerLink="/routines"
-               class="w-9 h-9 grid place-items-center rounded-full bg-white/20 backdrop-blur hover:bg-white/30 transition-colors"
+               class="w-9 h-9 grid place-items-center rounded-full bg-white/25 border border-white/40 hover:bg-white/35 transition-colors"
                aria-label="Volver">
               <span aria-hidden="true">←</span>
             </a>
             <div class="flex-1"></div>
             <a [routerLink]="['/routines', r.id, 'edit']"
-               class="px-3 py-1.5 rounded-full bg-white/20 backdrop-blur hover:bg-white/30 text-sm font-medium">
+               class="px-3 py-1.5 rounded-full bg-white/25 border border-white/40 hover:bg-white/35 text-sm font-medium">
               Editar
             </a>
           </div>
@@ -122,7 +122,7 @@ import { AdaptiveSuggestionCardComponent } from '../../components/adaptive-sugge
 
         <!-- Sticky action footer -->
         <footer class="fixed bottom-16 left-0 right-0 z-30 px-5 pb-4 md:bottom-4 md:left-64">
-          <div class="max-w-3xl mx-auto flex gap-2 bg-white/95 backdrop-blur border border-gray-200 rounded-2xl shadow-lg p-2">
+          <div class="max-w-3xl mx-auto flex gap-2 bg-white border border-gray-200 rounded-2xl shadow-sm p-2">
             <button type="button"
                     (click)="onSkip()"
                     class="flex-1 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors">

@@ -26,7 +26,7 @@ import { EmptyStateComponent } from '../../../../shared/components/ui/empty-stat
         </div>
 
         @if (proposedCount() > 0) {
-          <div class="mt-4 rounded-xl bg-white/10 backdrop-blur p-3 flex items-center gap-3">
+          <div class="mt-4 rounded-xl bg-white/15 border border-white/30 p-3 flex items-center gap-3">
             <span class="text-xl" aria-hidden="true">💡</span>
             <p class="text-sm flex-1">
               <span class="font-semibold">{{ proposedCount() }}</span> sugerencia<span>{{ proposedCount() === 1 ? '' : 's' }}</span> del coach

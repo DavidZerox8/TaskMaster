@@ -7,6 +7,7 @@ import { LevelUpModalComponent } from './shared/components/ui/level-up-modal/lev
 import { AchievementToastComponent } from './shared/components/ui/achievement-toast/achievement-toast.component';
 import { AICoachChatComponent } from './shared/components/ui/ai-coach-chat/ai-coach-chat.component';
 import { AdaptiveRecommendationsService } from './core/services/adaptive-recommendations.service';
+import { ControlStateService } from './core/services/control-state.service';
 
 const ADAPTIVE_INTERVAL_MS = 30 * 60 * 1000;
 
@@ -32,6 +33,8 @@ const ADAPTIVE_INTERVAL_MS = 30 * 60 * 1000;
 })
 export class AppComponent implements OnInit, OnDestroy {
   private readonly adaptiveService = inject(AdaptiveRecommendationsService);
+  // Eager-instantiate so its effect() begins driving <html data-control-state> from boot.
+  private readonly controlState = inject(ControlStateService);
   private intervalHandle: ReturnType<typeof setInterval> | null = null;
   private readonly visibilityHandler = () => {
     if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
