@@ -1,11 +1,14 @@
 import { Component, inject, signal, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { UserService } from '../../../../core/services/user.service';
 import { GamificationService } from '../../../../core/services/gamification.service';
 import { HabitService } from '../../../../core/services/habit.service';
 import { AIService } from '../../../../core/services/ai.service';
 import { AIConfigService } from '../../../../core/services/ai-config.service';
 import { NotificationService } from '../../../../core/services/notification.service';
+import { BackupService } from '../../../../core/services/backup.service';
+import { AuthService } from '../../../../core/services/auth.service';
 import { XpBarComponent } from '../../../../shared/components/ui/xp-bar/xp-bar.component';
 import {
   AIProviderType,
@@ -231,6 +234,29 @@ import {
         </div>
       </div>
 
+      <!-- Datos y cuenta -->
+      <div class="card p-5 space-y-3">
+        <h2 class="text-base font-semibold text-gray-900">Datos y cuenta</h2>
+        <p class="text-sm text-gray-500">
+          Tus datos viven en este dispositivo. Exporta backup regularmente — si pierdes el PIN no hay recuperación.
+        </p>
+        <div class="flex flex-col sm:flex-row gap-2">
+          <button type="button" class="btn-secondary flex-1" (click)="onExport()">
+            Exportar backup
+          </button>
+          <label class="btn-secondary flex-1 text-center cursor-pointer">
+            Importar backup
+            <input type="file" accept="application/json" class="hidden" (change)="onImport($event)" />
+          </label>
+        </div>
+        <button type="button" class="btn-danger w-full mt-2" (click)="onReset()">
+          Reiniciar aplicación
+        </button>
+        <p class="text-xs text-gray-400">
+          "Reiniciar" borra todos tus datos locales incluyendo el PIN. No se puede deshacer.
+        </p>
+      </div>
+
       <!-- App info -->
       <div class="card p-5">
         <h2 class="text-base font-semibold text-gray-900 mb-2">TaskMaster</h2>
@@ -247,6 +273,9 @@ export class ProfilePageComponent implements OnInit {
   aiConfigService = inject(AIConfigService);
   private aiService = inject(AIService);
   private notificationService = inject(NotificationService);
+  private backup = inject(BackupService);
+  private auth = inject(AuthService);
+  private router = inject(Router);
 
   providers: AIProviderType[] = ['anthropic', 'gemini'];
   showApiKey = signal<AIProviderType | null>(null);
@@ -270,6 +299,44 @@ export class ProfilePageComponent implements OnInit {
   updateGoals(text: string): void {
     const goals = text.split(',').map(g => g.trim()).filter(Boolean);
     this.userService.updateGoals(goals);
+  }
+
+  // ─── Datos y cuenta ───────────────────────────────────────────
+
+  onExport(): void {
+    this.backup.downloadAsJson();
+    this.notificationService.success('Backup exportado', 'Guarda este archivo en un lugar seguro');
+  }
+
+  async onImport(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    if (!confirm('Esto reemplazará tus datos actuales con el contenido del archivo. ¿Continuar?')) {
+      input.value = '';
+      return;
+    }
+    const result = await this.backup.importFromFile(file);
+    input.value = '';
+    if (result.ok) {
+      this.notificationService.success(
+        'Backup importado',
+        `${result.keysRestored} claves restauradas. La app se recargará.`,
+      );
+      setTimeout(() => window.location.reload(), 800);
+    } else {
+      this.notificationService.error('Error al importar', result.error ?? 'Archivo inválido');
+    }
+  }
+
+  onReset(): void {
+    if (!confirm('Esto borrará TODOS tus datos locales incluyendo el PIN. Acción irreversible. ¿Continuar?')) {
+      return;
+    }
+    this.backup.clearAll();
+    this.auth.reset();
+    this.router.navigateByUrl('/onboarding/welcome');
+    setTimeout(() => window.location.reload(), 200);
   }
 
   // ─── AI Configuration ─────────────────────────────────────────

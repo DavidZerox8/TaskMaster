@@ -22,6 +22,7 @@
     "@angular/platform-browser": "^19.2.0",
     "@angular/platform-browser-dynamic": "^19.2.0",
     "@angular/router": "^19.2.0",
+    "@angular/service-worker": "^19.2.20",
     "@capacitor/android": "^8.0.0-alpha.1",
     "@capacitor/angular": "^2.0.3",
     "@capacitor/core": "latest",
