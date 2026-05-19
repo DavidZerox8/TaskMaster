@@ -501,7 +501,9 @@ TaskMaster es una plataforma inteligente para construir buenos habitos, estructu
 
 El software de tracking de habitos tiene un modo de fallo por defecto: confunde **motivacion** (un truco externo) con **agencia** (una capacidad interna). El resultado es una caminadora de insignias, rachas, notificaciones push y bucles de refuerzo dopaminergico que entrenan al usuario a depender de la app en lugar de si mismo. La app se convierte en la adiccion que prometia curar.
 
-TaskMaster rechaza ese marco. La tesis: **el unico trabajo honesto de un motor de rutinas es auditar el entorno de la persona que lo usa**, y luego reflejar — con conviccion matematica — la relacion entre sus acciones y los resultados que dice querer. Cero aplausos por levantarse. Cero verguenza por una racha rota. Solo un espejo implacable.
+<img width="1337" height="600" alt="image" src="https://github.com/user-attachments/assets/31142994-e4c9-4892-8e2e-1666146e61f3" />
+
+TaskMaster es una plataforma inteligente para adoptar buenos habitos y dejar malos habitos, potenciada con IA (Anthropic Claude / Google Gemini) y un sistema de gamificacion con puntos canjeables por premios reales. Construida con Angular 19 y preparada para ejecutarse como app movil nativa con Capacitor.
 
 En terminos termodinamicos: una persona sin rutinas deriva hacia la entropia. Una rutina es **energia direccional aplicada para mantener orden estructural**. El trabajo de la interfaz no es celebrar la energia gastada, sino reflejar la reduccion del ruido — mientras mas silenciosa se vuelve la interfaz, mas ha ganado el usuario. La recompensa no es la proxima notificacion; es la desaparicion del sistema del dia del usuario.
 
