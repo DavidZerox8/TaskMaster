@@ -61,7 +61,76 @@ The visible artefact of this doctrine is the **conviction-button**: tasks comple
 | Phase 5g | HTTP repositories + Capacitor push real | Pending |
 | Phase 5h | Rebrand: TaskMaster → ControlMaster | Pending |
 | Phase 6 — Iter 1 | **Elevated Design System (Zoneless + Signals + @defer + Quiet UI)** | **Completed** |
-| Phase 6 — Iter 2 | PWA, virtual scrolling, push notifications | Pending |
+| Phase 7 — MVP | **Offline-first MVP (PIN auth, onboarding, PWA, backup)** | **Completed** |
+| Phase 6 — Iter 2 | Virtual scrolling, push notifications, advanced PWA cache | Pending |
+
+## Highlights — Phase 7 (Offline-first MVP)
+
+The app now runs as a self-contained product while the backend is being built — no network required for any core flow, no third-party service required for any feature except optional AI calls.
+
+### Auth — PIN + biometric
+- **PIN setup** (6 digits, configurable 4–8) created during onboarding via [`AuthService.setupPin()`](src/app/core/services/auth.service.ts). The PIN is never persisted; only `salt` + `SHA-256(PBKDF2-derived key)` are stored in `localStorage['auth.user']`.
+- **PBKDF2 (250k iters, SHA-256) → AES-GCM-256** wrapper in [`CryptoService`](src/app/core/services/crypto.service.ts). The derived key lives only in a private signal after unlock; it is wiped on `lock()` and on `visibilitychange → hidden`.
+- **Cooldown ladder** on failed attempts: 3 → 30 s, 6 → 5 min, 9 → 30 min, 10 → reset required. Implemented in [`AuthService.registerFailure`](src/app/core/services/auth.service.ts).
+- **[`BiometricService`](src/app/core/services/biometric.service.ts)** stub: web returns `web-no-op`, native bridge pending on the Capacitor build target. The lock page hides the biometric button when unavailable; no per-callsite branching.
+- **[`authGuard`](src/app/core/guards/auth.guard.ts)** gates every authenticated route. `/lock` and `/onboarding/*` opt out. Lock-on-background wired in [`AppComponent`](src/app/app.component.ts) — `visibilitychange → hidden` invokes `auth.lock()`.
+
+### Onboarding wizard
+- 6-step flow at [`/onboarding/*`](src/app/features/onboarding/onboarding.routes.ts): Welcome (name) → Goals (multi-select chips) → Templates (0–3 seed routines) → AI optional → PIN setup (two-pass confirmation) → Done.
+- Reusable [`OnboardingShellComponent`](src/app/features/onboarding/components/onboarding-shell/onboarding-shell.component.ts) renders the progress bar + navigation footer; each step page injects content.
+- [`OnboardingService`](src/app/core/services/onboarding.service.ts) holds the draft as a signal; `complete()` invokes `AuthService.setupPin` + `RoutineService.create` for each selected template.
+
+### Routine templates
+- **10 pre-built routines** in [`TemplateCatalogService`](src/app/core/services/template-catalog.service.ts): morning routine, evening wind-down, workout, deep work, hydration, gratitude, weekly review, reading, cold + breath, post-workout stack. Each is a complete `RoutineCreateRequest` (name, icon, schedule, ordered tasks).
+
+### PWA — installable, offline-first
+- `@angular/service-worker` registered via [`provideServiceWorker`](src/app/app.config.ts) with `registerWhenStable:30000`.
+- [`ngsw-config.json`](ngsw-config.json) prefetches app shell, lazy-caches assets, performance-caches Google Fonts for 30 days.
+- [`public/manifest.webmanifest`](public/manifest.webmanifest) with SVG icons (any + maskable purpose), standalone display, oklch-derived theme color.
+- [`PwaInstallService`](src/app/core/services/pwa-install.service.ts) captures `beforeinstallprompt`, exposes a `canInstall` signal and a `prompt()` method; dismissal persists for 7 days before re-prompting.
+
+### Backup / restore / reset
+- [`BackupService.exportToBundle()`](src/app/core/services/backup.service.ts) walks `localStorage`, captures all app-owned keys (habits, routines, gamification, etc.), explicitly skips `auth.*` to preserve at-rest security after import.
+- `downloadAsJson()` builds a Blob and triggers a download (`taskmaster-backup-YYYY-MM-DD.json`).
+- `importFromFile(File)` validates `app === 'TaskMaster'` and `schemaVersion` before wiping exportable keys and restoring; rejects future schemas or foreign bundles.
+- `clearAll()` is the destructive nuclear option used by the **Reset app** action; the auth record is also wiped, the user is redirected to onboarding, and the app force-reloads.
+- All three are wired into [`profile-page`](src/app/features/profile/pages/profile-page/profile-page.component.ts) under a new **Datos y cuenta** card.
+
+### Verification
+- `npm run build:prod` → green. Initial bundle **107 kB transfer (413 kB raw)** including service worker registration. Service worker emits at `dist/todo-app/browser/ngsw-worker.js`.
+- `npm test` → **102/103 passing** (1 pre-existing date-sensitive habit-insight spec, unrelated to this work).
+- 12 new specs introduced: 4 for `CryptoService`, 8 for `AuthService`, 3 for `TemplateCatalogService`, 5 for `BackupService`.
+- Manual smoke: cold launch with empty `localStorage` → onboarding → name + 1 template + PIN → dashboard. Background → return → /lock. Wrong PIN ×3 → 30 s cooldown.
+
+### Out of scope for the MVP (post-MVP)
+- Multi-user profiles on the same device.
+- PIN recovery (loss of PIN = reset; documented in onboarding copy).
+- Sync between devices and the NestJS backend (Phase 5f–g).
+- Native biometric bridge wiring (`@aparajita/capacitor-biometric-auth` install + storage of biometric-protected derived key).
+- Self-hosted brutalist typography and full hero-gradient refactor (deferred from Phase 6 Iter 1).
+
+## Installing the MVP
+
+### As a PWA (any browser)
+1. `npm run build:prod`
+2. Serve `dist/todo-app/browser/` over HTTPS (or `localhost`).
+3. Open in Chrome / Edge / Safari → install prompt appears (or use the browser menu → *Install TaskMaster*).
+4. App opens standalone; works offline after the first visit.
+
+### As an Android app (Capacitor)
+```bash
+# One-time setup (requires Android Studio installed)
+npm i @capacitor/android@latest
+npx cap add android
+
+# Each release
+npm run build:prod
+npx cap sync android
+npm run cap:android   # opens Android Studio → Run / build APK
+```
+
+### iOS (macOS only)
+Same flow as Android, swap `android` for `ios`, requires Xcode.
 
 ## Highlights — Phase 6 Iter 1 (Elevated Design System)
 
@@ -485,7 +554,75 @@ El artefacto visible de esta doctrina es el **conviction-button**: las tareas se
 | Fase 5g | Repositorios HTTP + push real Capacitor | Pendiente |
 | Fase 5h | Rebrand: TaskMaster → ControlMaster | Pendiente |
 | Fase 6 — Iter 1 | **Elevated Design System (Zoneless + Signals + @defer + Quiet UI)** | **Completada** |
-| Fase 6 — Iter 2 | PWA, virtual scrolling, push notifications | Pendiente |
+| Fase 7 — MVP | **MVP offline-first (PIN auth, onboarding, PWA, backup)** | **Completada** |
+| Fase 6 — Iter 2 | Virtual scrolling, push notifications, PWA cache avanzado | Pendiente |
+
+## Novedades — Fase 7 (MVP offline-first)
+
+La aplicación corre como producto autocontenido mientras se construye el backend — sin red para ningún flujo core, sin terceros para nada salvo llamadas opcionales a IA.
+
+### Auth — PIN + biométrico
+- **PIN de 6 dígitos** (configurable 4–8) creado durante el onboarding via [`AuthService.setupPin()`](src/app/core/services/auth.service.ts). El PIN nunca se persiste; solo se almacena `salt` + `SHA-256(clave-derivada-PBKDF2)` en `localStorage['auth.user']`.
+- **PBKDF2 (250k iter, SHA-256) → AES-GCM-256** en [`CryptoService`](src/app/core/services/crypto.service.ts). La clave derivada vive solo en una signal privada tras el unlock; se borra en `lock()` y en `visibilitychange → hidden`.
+- **Escalera de cooldowns** ante intentos fallidos: 3 → 30 s, 6 → 5 min, 9 → 30 min, 10 → reset obligado.
+- **[`BiometricService`](src/app/core/services/biometric.service.ts)** stub: web devuelve `web-no-op`, bridge nativo queda pendiente para el build de Capacitor. El lock page oculta el botón biométrico cuando no está disponible.
+- **[`authGuard`](src/app/core/guards/auth.guard.ts)** protege todas las rutas autenticadas. `/lock` y `/onboarding/*` lo evitan. Lock-on-background cableado en [`AppComponent`](src/app/app.component.ts) — `visibilitychange → hidden` invoca `auth.lock()`.
+
+### Wizard de onboarding
+- Flujo de 6 pasos en [`/onboarding/*`](src/app/features/onboarding/onboarding.routes.ts): Bienvenida (nombre) → Objetivos (chips multi-select) → Plantillas (0–3 rutinas seed) → IA opcional → Configurar PIN (doble confirmación) → Listo.
+- [`OnboardingShellComponent`](src/app/features/onboarding/components/onboarding-shell/onboarding-shell.component.ts) reutilizable provee la barra de progreso + navegación.
+- [`OnboardingService`](src/app/core/services/onboarding.service.ts) mantiene el draft como signal; `complete()` invoca `AuthService.setupPin` + `RoutineService.create` por cada plantilla seleccionada.
+
+### Catálogo de rutinas
+- **10 rutinas pre-construidas** en [`TemplateCatalogService`](src/app/core/services/template-catalog.service.ts): matinal, bajada nocturna, entrenamiento, deep work, hidratación, gratitud, revisión semanal, lectura, frío + respiración, stack post-entreno.
+
+### PWA — instalable, offline-first
+- `@angular/service-worker` registrado via [`provideServiceWorker`](src/app/app.config.ts) con `registerWhenStable:30000`.
+- [`ngsw-config.json`](ngsw-config.json) precachea el app shell, lazy-cachea assets, performance-cachea Google Fonts por 30 días.
+- [`public/manifest.webmanifest`](public/manifest.webmanifest) con iconos SVG (any + maskable), display standalone, theme color derivado de oklch.
+- [`PwaInstallService`](src/app/core/services/pwa-install.service.ts) captura `beforeinstallprompt`, expone signal `canInstall` y método `prompt()`; el dismiss persiste 7 días.
+
+### Backup / restore / reset
+- [`BackupService.exportToBundle()`](src/app/core/services/backup.service.ts) recorre `localStorage`, captura todas las claves de la app (habits, routines, gamification, etc.), excluye explícitamente `auth.*` para preservar la seguridad at-rest tras importar.
+- `downloadAsJson()` arma un Blob y dispara descarga (`taskmaster-backup-YYYY-MM-DD.json`).
+- `importFromFile(File)` valida `app === 'TaskMaster'` y `schemaVersion` antes de limpiar las claves exportables y restaurar; rechaza schemas futuros o bundles de otras apps.
+- `clearAll()` es la opción nuclear destructiva usada por **Reiniciar aplicación**; el record de auth también se borra, redirige al onboarding y fuerza recarga.
+- Los tres están cableados en [`profile-page`](src/app/features/profile/pages/profile-page/profile-page.component.ts) bajo la card **Datos y cuenta**.
+
+### Verificación
+- `npm run build:prod` → verde. Bundle inicial **107 kB transfer (413 kB raw)** con service worker. SW emite en `dist/todo-app/browser/ngsw-worker.js`.
+- `npm test` → **102/103 verde** (1 spec pre-existente date-sensitive del habit-insight, no relacionado).
+- 12 specs nuevos: 4 para `CryptoService`, 8 para `AuthService`, 3 para `TemplateCatalogService`, 5 para `BackupService`.
+
+### Fuera de scope para el MVP (post-MVP)
+- Perfiles múltiples en el mismo dispositivo.
+- Recuperación de PIN (pérdida = reset; documentado en el copy del onboarding).
+- Sync entre dispositivos y backend NestJS (Fase 5f–g).
+- Bridge nativo biométrico (`@aparajita/capacitor-biometric-auth`).
+- Tipografía brutalista self-hosted y refactor pleno de hero-gradients (diferido de Fase 6 Iter 1).
+
+## Instalación del MVP
+
+### Como PWA
+1. `npm run build:prod`
+2. Servir `dist/todo-app/browser/` por HTTPS (o `localhost`).
+3. Abrir en Chrome / Edge / Safari → aparece el prompt de instalación (o menú del navegador → *Instalar TaskMaster*).
+4. La app abre standalone; funciona offline tras la primera visita.
+
+### Como app Android (Capacitor)
+```bash
+# Setup único (requiere Android Studio instalado)
+npm i @capacitor/android@latest
+npx cap add android
+
+# Cada release
+npm run build:prod
+npx cap sync android
+npm run cap:android   # abre Android Studio → Run / build APK
+```
+
+### iOS (sólo macOS)
+Mismo flujo que Android, cambia `android` por `ios`, requiere Xcode.
 
 ## Novedades — Fase 6 Iter 1 (Elevated Design System)
 
